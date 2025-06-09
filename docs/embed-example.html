@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUSA Arcade - Embed Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .embed-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .embed-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            border-radius: 8px;
+        }
+        
+        .code-example {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        
+        .code-example code {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .score-display {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 15px;
+            color: #666;
+        }
+        
+        .game-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .game-selector button {
+            background: #1E3A8A;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .game-selector button:hover {
+            background: #3B82F6;
+        }
+        
+        .game-selector button.active {
+            background: #3B82F6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DUSA Arcade Embed Example</h1>
+        
+        <div class="embed-container">
+            <h2>Live Demo</h2>
+            <p>Select a game to see how it works when embedded:</p>
+            
+            <div class="game-selector">
+                <button onclick="loadGame('dusa-snake')" class="active">DUSA Snake</button>
+                <button onclick="loadGame('dusa-pong')">DUSA Pong</button>
+            </div>
+            
+            <div class="embed-wrapper">
+                <iframe id="gameFrame" src="../games/dusa-snake/index.html"></iframe>
+            </div>
+            
+            <div class="score-display">
+                Current Score: <span id="currentScore">0</span>
+            </div>
+        </div>
+        
+        <div class="embed-container">
+            <h2>Basic Embed Code</h2>
+            <p>Simply copy this code to embed any DUSA Arcade game on your website:</p>
+            
+            <div class="code-example">
+                <code>
+&lt;iframe 
+  src="https://your-domain.com/games/dusa-snake/index.html" 
+  width="900" 
+  height="600"
+  frameborder="0"&gt;
+&lt;/iframe&gt;
+                </code>
+            </div>
+        </div>
+        
+        <div class="embed-container">
+            <h2>Advanced Integration</h2>
+            <p>Listen for game events and interact with the embedded game:</p>
+            
+            <div class="code-example">
+                <code>
+// Listen for score updates from the game
+window.addEventListener('message', function(event) {
+    if (event.data.type === 'dusa-score-update') {
+        console.log('Game:', event.data.game);
+        console.log('Score:', event.data.score);
+        updateScoreDisplay(event.data.score);
+    }
+});
+
+// Send commands to the game
+function sendCommand(command) {
+    const iframe = document.getElementById('gameFrame');
+    iframe.contentWindow.postMessage({
+        type: 'dusa-command-' + command
+    }, '*');
+}
+                </code>
+            </div>
+        </div>
+        
+        <div class="embed-container">
+            <h2>Responsive Embedding</h2>
+            <p>The games automatically adapt to container size. Use CSS to make them responsive:</p>
+            
+            <div class="code-example">
+                <code>
+.game-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+}
+
+.game-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+                </code>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Current game
+        let currentGame = 'dusa-snake';
+        
+        // Load game
+        function loadGame(game) {
+            currentGame = game;
+            const iframe = document.getElementById('gameFrame');
+            iframe.src = `../games/${game}/index.html`;
+            
+            // Update button states
+            document.querySelectorAll('.game-selector button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Reset score
+            document.getElementById('currentScore').textContent = '0';
+        }
+        
+        // Listen for messages from embedded games
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'dusa-score-update') {
+                document.getElementById('currentScore').textContent = event.data.score;
+                console.log('Score update from', event.data.game, ':', event.data.score);
+            }
+            
+            if (event.data && event.data.type === 'dusa-resize') {
+                console.log('Resize request from', event.data.game, ':', event.data.height);
+            }
+            
+            if (event.data && event.data.type === 'dusa-state-update') {
+                console.log('State update from', event.data.game, ':', event.data.state);
+            }
+        });
+    </script>
+</body>
+</html>

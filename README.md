@@ -17,6 +17,15 @@ The flagship game of DUSA Arcade - a modern take on the classic Nokia Snake game
 
 [Play DUSA Snake →](games/dusa-snake/index.html)
 
+### 2. DUSA Pong
+A mystical battle between mirror and snake - reimagining the classic Pong:
+- **Mirror vs Snake**: Unique paddle dynamics with visual effects
+- **Flame Ball**: Color-changing ball that shows who hit it last
+- **Score Strategy**: Lose points when you miss, adding risk/reward
+- **Progressive Difficulty**: Gets harder at 8, 16, 32, 64 point milestones
+
+[Play DUSA Pong →](games/dusa-pong/index.html)
+
 ### More Games Coming Soon...
 - DUSA Tetris
 - DUSA Breakout
@@ -59,7 +68,7 @@ DUSA-Arcade/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/[username]/DUSA-Arcade.git
+git clone https://github.com/ForkIt369/DUSA-Arcade.git
 cd DUSA-Arcade
 ```
 
@@ -73,6 +82,21 @@ open games/dusa-snake/index.html
 python -m http.server 8000
 # Visit http://localhost:8000
 ```
+
+## 🔌 Embedding Games
+
+DUSA Arcade games are designed to be modular and embeddable. Each game can be embedded into external websites:
+
+```html
+<iframe 
+  src="https://your-domain.com/games/dusa-snake/index.html" 
+  width="900" 
+  height="600"
+  frameborder="0">
+</iframe>
+```
+
+Games support PostMessage API for score updates and state communication. See [embed example](docs/embed-example.html) for advanced integration.
 
 ## 🔧 Development
 

@@ -1,0 +1,42 @@
+/* DUSA Arcade Embed Styles */
+/* Ensures games display properly when embedded */
+
+.dusa-embedded {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.dusa-embedded .game-container {
+    margin: 0;
+    border-radius: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Hide certain elements in embed mode */
+.dusa-embedded .back-to-arcade {
+    display: none;
+}
+
+/* Responsive canvas sizing */
+.dusa-embedded canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Adjust padding for embedded games */
+.dusa-embedded .game-info {
+    padding: 0.5rem;
+}
+
+/* Ensure touch controls work in embeds */
+.dusa-embedded .mobile-controls {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
