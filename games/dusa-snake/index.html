@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUSA Snake | DUSA Arcade</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #0D1117;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(81, 47, 201, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 224, 255, 0.1) 0%, transparent 50%);
+        }
+        
+        .game-container {
+            background-color: #161B22;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0 1rem;
+        }
+        
+        .score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .score, .high-score {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #3B82F6;
+        }
+        
+        .bits {
+            font-size: 1rem;
+            color: #1E3A8A;
+            font-weight: 600;
+        }
+        
+        .multiplier {
+            font-size: 0.9rem;
+            color: #60A5FA;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .multiplier.active {
+            opacity: 1;
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+        
+        .combo {
+            font-size: 0.9rem;
+            color: #1E3A8A;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .combo.active {
+            opacity: 1;
+        }
+        
+        .speed-indicator {
+            font-size: 0.9rem;
+            color: #8B92A3;
+        }
+        
+        canvas {
+            border: 2px solid #1E3A8A;
+            border-radius: 8px;
+            background-color: #0D1117;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(30, 58, 138, 0.3);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background-color: #1E3A8A;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        button:not(:disabled):hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        button:not(:disabled):hover {
+            background-color: #3B82F6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background-color: rgba(22, 27, 34, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid #1E3A8A;
+            z-index: 10;
+            transition: transform 0.3s ease;
+        }
+        
+        .game-over.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .game-over h2 {
+            font-size: 2rem;
+            color: #3B82F6;
+            margin-bottom: 1rem;
+        }
+        
+        .game-over p {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stats {
+            font-size: 0.9rem;
+            color: #8B92A3;
+            margin-bottom: 1rem;
+        }
+        
+        .instructions {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #8B92A3;
+        }
+        
+        .mobile-controls {
+            display: none;
+            margin-top: 1rem;
+            gap: 0.5rem;
+            grid-template-areas: 
+                ". up ."
+                "left . right"
+                ". down .";
+            grid-template-columns: 60px 60px 60px;
+            justify-content: center;
+        }
+        
+        .mobile-controls button {
+            width: 60px;
+            height: 60px;
+            padding: 0;
+            font-size: 1.5rem;
+            border-radius: 50%;
+            background-color: #2D333B;
+            border: 2px solid #1E3A8A;
+        }
+        
+        .mobile-controls button:hover {
+            background-color: #1E3A8A;
+        }
+        
+        #upBtn { grid-area: up; }
+        #leftBtn { grid-area: left; }
+        #rightBtn { grid-area: right; }
+        #downBtn { grid-area: down; }
+        
+        .power-up-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.9rem;
+            color: #FFD700;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .power-up-indicator.active {
+            opacity: 1;
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.8rem;
+            color: #8B92A3;
+            display: none;
+        }
+        
+        .avatar-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid #1E3A8A;
+            box-shadow: 0 0 20px rgba(30, 58, 138, 0.5);
+            background: #0D1117;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s ease;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .avatar-display img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .avatar-display.celebrating {
+            animation: celebrate 0.5s ease;
+            border-color: #FFD700;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+        }
+        
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.2) rotate(-10deg); }
+            75% { transform: scale(1.2) rotate(10deg); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .avatar-emotion {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            font-size: 24px;
+            background: #161B22;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .avatar-emotion.show {
+            opacity: 1;
+        }
+        
+        .avatar-trail {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .avatar-trail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-controls {
+                display: grid;
+            }
+            
+            .instructions {
+                display: none;
+            }
+            
+            .game-container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>DUSA Snake</h1>
+        <div class="debug-info" id="debugInfo"></div>
+        <div class="avatar-display" id="avatarDisplay">
+            <img id="currentAvatar" src="" alt="Avatar">
+            <div class="avatar-emotion" id="avatarEmotion"></div>
+        </div>
+        <div class="game-info">
+            <div class="score-container">
+                <div class="score">Score: <span id="score">0</span></div>
+                <div class="bits">BITS: <span id="bits">0</span></div>
+                <div class="multiplier" id="multiplier">x<span id="multiplierValue">1</span> MULTIPLIER!</div>
+            </div>
+            <div>
+                <div class="high-score">Best: <span id="highScore">0</span></div>
+                <div class="speed-indicator">Speed: <span id="speed">1</span>x</div>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="power-up-indicator" id="powerUpIndicator">POWER UP!</div>
+        <div class="controls">
+            <button id="startBtn">Start Game</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="soundBtn">Sound: ON</button>
+        </div>
+        <div class="instructions">Use Arrow Keys or WASD to control • Collect power-ups!</div>
+        <div class="mobile-controls">
+            <button id="upBtn">↑</button>
+            <button id="leftBtn">←</button>
+            <button id="rightBtn">→</button>
+            <button id="downBtn">↓</button>
+        </div>
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <div class="stats">
+                <div>Food Eaten: <span id="foodEaten">0</span></div>
+                <div>Max Combo: <span id="maxCombo">0</span></div>
+                <div>Time Played: <span id="timePlayed">0</span>s</div>
+            </div>
+            <button id="restartBtn">Play Again</button>
+        </div>
+    </div>
+    
+    <script>
+        'use strict';
+        
+        // Constants
+        const GRID_SIZE = 20;
+        const MAX_PARTICLES = 100;
+        const MAX_TRAILS = 50;
+        const MAX_FOOD_ATTEMPTS = 100;
+        const DEBUG_MODE = false;
+        
+        // Avatar system
+        const AVATARS = [
+            'assets/avatars/R9Ic6wUZ01AFhvd6eHz3y_e0985cf7119141f3ac602fc1bb3fd792.png',
+            'assets/avatars/61d1ce9f0018404786df67d4077b10ef.png',
+            'assets/avatars/f4620d83a9c64c96ae42c837e05aee88.png',
+            'assets/avatars/9283026c9a63406f8cc578dfdc754ed9.png',
+            'assets/avatars/f42f5cf602d946069dab6d9413f8f064.png',
+            'assets/avatars/48adb8190d52445fbce2830bf9ceb316.png',
+            'assets/avatars/03ac9e3e9d094cf596d178ec94098b90.png'
+        ];
+        
+        const AVATAR_BITS_MILESTONES = [0, 8, 16, 32, 64, 128, 256];
+        let currentAvatarIndex = 0;
+        let avatarImages = {};
+        let avatarTrails = [];
+        
+        // DOM Elements
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const gameOverDiv = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        const bitsElement = document.getElementById('bits');
+        const multiplierElement = document.getElementById('multiplier');
+        const multiplierValueElement = document.getElementById('multiplierValue');
+        const speedElement = document.getElementById('speed');
+        const powerUpIndicator = document.getElementById('powerUpIndicator');
+        const debugInfo = document.getElementById('debugInfo');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const soundBtn = document.getElementById('soundBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const avatarDisplay = document.getElementById('avatarDisplay');
+        const currentAvatarImg = document.getElementById('currentAvatar');
+        const avatarEmotion = document.getElementById('avatarEmotion');
+        
+        // Game settings
+        const tileCount = canvas.width / GRID_SIZE;
+        
+        // Game state
+        const gameState = {
+            snake: [],
+            directionQueue: [],
+            currentDirection: { x: 0, y: 0 },
+            foodX: 0,
+            foodY: 0,
+            score: 0,
+            bits: 0,
+            multiplier: 1,
+            highScore: parseInt(localStorage.getItem('dusaSnakeHighScore') || '0'),
+            isRunning: false,
+            isPaused: false,
+            isGameOver: false,
+            soundEnabled: true,
+            hasStarted: false,
+            firstMove: false,
+            speed: 1,
+            particles: [],
+            trails: [],
+            powerUps: [],
+            activePowerUp: null,
+            gameStartTime: 0,
+            foodEatenCount: 0,
+            lastUpdateTime: 0,
+            lastFrameTime: 0,
+            frameCount: 0,
+            animationId: null
+        };
+        
+        // Timers to track and clean up
+        const timers = {
+            multiplier: null,
+            powerUp: null,
+            shake: null
+        };
+        
+        // BITS progression system
+        const BITS_MILESTONES = [8, 16, 32, 64];
+        const MULTIPLIER_VALUES = [2, 4, 8, 16];
+        
+        function calculateMultiplier(bits) {
+            let multiplier = 1;
+            for (let i = 0; i < BITS_MILESTONES.length; i++) {
+                if (bits >= BITS_MILESTONES[i]) {
+                    multiplier = MULTIPLIER_VALUES[i];
+                } else {
+                    break;
+                }
+            }
+            return multiplier;
+        }
+        
+        function updateBitsAndScore() {
+            gameState.bits++;
+            bitsElement.textContent = gameState.bits;
+            
+            // Calculate new multiplier
+            const newMultiplier = calculateMultiplier(gameState.bits);
+            
+            // Check if we hit a milestone
+            if (newMultiplier > gameState.multiplier) {
+                gameState.multiplier = newMultiplier;
+                multiplierValueElement.textContent = gameState.multiplier;
+                multiplierElement.classList.add('active');
+                
+                // Milestone celebration effects
+                createParticles(
+                    canvas.width / 2,
+                    canvas.height / 2,
+                    '#3B82F6',
+                    30
+                );
+                
+                canvas.style.boxShadow = '0 0 60px rgba(59, 130, 246, 1)';
+                setTimeout(() => {
+                    canvas.style.boxShadow = '0 0 20px rgba(30, 58, 138, 0.3)';
+                }, 500);
+                
+                // Milestone sound sequence
+                playSound(880, 0.2);
+                setTimeout(() => playSound(1100, 0.2), 150);
+                setTimeout(() => playSound(1320, 0.2), 300);
+                
+                clearTimeout(timers.multiplier);
+                timers.multiplier = setTimeout(() => {
+                    multiplierElement.classList.remove('active');
+                }, 3000);
+            }
+            
+            // Score increases linearly by 1, multiplied by current multiplier
+            gameState.score += gameState.multiplier;
+            scoreElement.textContent = gameState.score;
+            
+            // Update avatar based on BITS collected
+            updateAvatar();
+        }
+        
+        // Audio context
+        let audioContext = null;
+        
+        // Initialize
+        highScoreElement.textContent = gameState.highScore;
+        if (DEBUG_MODE) debugInfo.style.display = 'block';
+        
+        // Preload avatar images
+        function preloadAvatars() {
+            AVATARS.forEach((filename, index) => {
+                const img = new Image();
+                img.src = filename;
+                img.onload = () => {
+                    avatarImages[index] = img;
+                    if (index === 0) {
+                        currentAvatarImg.src = filename;
+                    }
+                };
+            });
+        }
+        
+        // Update avatar based on BITS collected
+        function updateAvatar() {
+            let newAvatarIndex = 0;
+            for (let i = AVATAR_BITS_MILESTONES.length - 1; i >= 0; i--) {
+                if (gameState.bits >= AVATAR_BITS_MILESTONES[i]) {
+                    newAvatarIndex = Math.min(i, AVATARS.length - 1);
+                    break;
+                }
+            }
+            
+            if (newAvatarIndex !== currentAvatarIndex) {
+                currentAvatarIndex = newAvatarIndex;
+                currentAvatarImg.src = AVATARS[currentAvatarIndex];
+                
+                // Avatar change celebration
+                avatarDisplay.classList.add('celebrating');
+                showAvatarEmotion('🎉');
+                
+                // Special effects
+                createParticles(
+                    avatarDisplay.offsetLeft + 60,
+                    avatarDisplay.offsetTop + 60,
+                    '#FFD700',
+                    20
+                );
+                
+                playSound(1320, 0.3);
+                setTimeout(() => playSound(1760, 0.3), 150);
+                
+                setTimeout(() => {
+                    avatarDisplay.classList.remove('celebrating');
+                }, 500);
+            }
+        }
+        
+        // Show avatar emotion
+        function showAvatarEmotion(emotion) {
+            avatarEmotion.textContent = emotion;
+            avatarEmotion.classList.add('show');
+            setTimeout(() => {
+                avatarEmotion.classList.remove('show');
+            }, 2000);
+        }
+        
+        // Create avatar trail effect
+        function createAvatarTrail(x, y) {
+            const trail = document.createElement('div');
+            trail.className = 'avatar-trail';
+            trail.style.left = x + 'px';
+            trail.style.top = y + 'px';
+            
+            const img = document.createElement('img');
+            img.src = AVATARS[currentAvatarIndex];
+            trail.appendChild(img);
+            
+            document.body.appendChild(trail);
+            
+            setTimeout(() => {
+                trail.style.opacity = '0.3';
+                trail.style.transform = 'scale(0.8)';
+            }, 10);
+            
+            setTimeout(() => {
+                trail.remove();
+            }, 1000);
+            
+            avatarTrails.push(trail);
+            if (avatarTrails.length > 5) {
+                const oldTrail = avatarTrails.shift();
+                if (oldTrail.parentNode) {
+                    oldTrail.remove();
+                }
+            }
+        }
+        
+        // Initialize avatars
+        preloadAvatars();
+        
+        // Particle class
+        class Particle {
+            constructor(x, y, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = velocity;
+                this.life = 1;
+                this.decay = 0.02;
+                this.size = Math.random() * 3 + 2;
+            }
+            
+            update() {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.life -= this.decay;
+                this.size *= 0.98;
+            }
+            
+            draw() {
+                if (this.life <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.restore();
+            }
+        }
+        
+        // Initialize audio
+        function initAudio() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error('Audio context failed:', e);
+                    gameState.soundEnabled = false;
+                }
+            }
+        }
+        
+        // Play sound effect safely
+        function playSound(frequency, duration, type = 'sine') {
+            if (!gameState.soundEnabled || !audioContext) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = frequency;
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                console.error('Sound playback failed:', e);
+            }
+        }
+        
+        // Create particles with limit
+        function createParticles(x, y, color, count = 10) {
+            const particlesToAdd = Math.min(count, MAX_PARTICLES - gameState.particles.length);
+            for (let i = 0; i < particlesToAdd; i++) {
+                const angle = (Math.PI * 2 / count) * i;
+                const velocity = {
+                    x: Math.cos(angle) * (Math.random() * 3 + 1),
+                    y: Math.sin(angle) * (Math.random() * 3 + 1)
+                };
+                gameState.particles.push(new Particle(x, y, color, velocity));
+            }
+        }
+        
+        // Clean up all timers
+        function cleanupTimers() {
+            Object.keys(timers).forEach(key => {
+                if (timers[key]) {
+                    clearTimeout(timers[key]);
+                    timers[key] = null;
+                }
+            });
+        }
+        
+        // Process direction queue
+        function processDirectionQueue() {
+            if (gameState.directionQueue.length > 0 && !gameState.isPaused && gameState.isRunning) {
+                const nextDir = gameState.directionQueue.shift();
+                
+                // Validate direction change
+                const currentDir = gameState.currentDirection;
+                const isValidChange = (
+                    (nextDir.x !== -currentDir.x || currentDir.x === 0) &&
+                    (nextDir.y !== -currentDir.y || currentDir.y === 0)
+                );
+                
+                if (isValidChange) {
+                    gameState.currentDirection = nextDir;
+                    
+                    // Play start sound on first move
+                    if (!gameState.firstMove && (nextDir.x !== 0 || nextDir.y !== 0)) {
+                        gameState.firstMove = true;
+                        playSound(440, 0.1);
+                        setTimeout(() => playSound(550, 0.1), 100);
+                        setTimeout(() => playSound(660, 0.1), 200);
+                    }
+                }
+            }
+        }
+        
+        // Input handling with queue
+        function handleDirectionInput(dx, dy) {
+            if (!gameState.isRunning || gameState.isPaused || gameState.isGameOver) return;
+            
+            // Add to queue if not duplicate
+            const lastQueued = gameState.directionQueue[gameState.directionQueue.length - 1] || gameState.currentDirection;
+            if (dx !== lastQueued.x || dy !== lastQueued.y) {
+                gameState.directionQueue.push({ x: dx, y: dy });
+            }
+        }
+        
+        // Keyboard input
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    handleDirectionInput(0, -1);
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    handleDirectionInput(0, 1);
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    handleDirectionInput(-1, 0);
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    handleDirectionInput(1, 0);
+                    break;
+            }
+        });
+        
+        // Touch support
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        
+        canvas.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                handleDirectionInput(deltaX > 0 ? 1 : -1, 0);
+            } else {
+                handleDirectionInput(0, deltaY > 0 ? 1 : -1);
+            }
+        }, { passive: true });
+        
+        // Mobile controls
+        document.getElementById('upBtn').addEventListener('click', () => handleDirectionInput(0, -1));
+        document.getElementById('downBtn').addEventListener('click', () => handleDirectionInput(0, 1));
+        document.getElementById('leftBtn').addEventListener('click', () => handleDirectionInput(-1, 0));
+        document.getElementById('rightBtn').addEventListener('click', () => handleDirectionInput(1, 0));
+        
+        // Button controls with debouncing
+        let buttonDebounce = false;
+        
+        startBtn.addEventListener('click', () => {
+            if (!buttonDebounce) {
+                buttonDebounce = true;
+                startGame();
+                setTimeout(() => buttonDebounce = false, 300);
+            }
+        });
+        
+        pauseBtn.addEventListener('click', togglePause);
+        soundBtn.addEventListener('click', toggleSound);
+        
+        restartBtn.addEventListener('click', () => {
+            if (!buttonDebounce) {
+                buttonDebounce = true;
+                gameOverDiv.classList.remove('show');
+                setTimeout(() => {
+                    startGame();
+                    buttonDebounce = false;
+                }, 300);
+            }
+        });
+        
+        function startGame() {
+            // Clean up previous game
+            cleanupTimers();
+            if (gameState.animationId) {
+                cancelAnimationFrame(gameState.animationId);
+            }
+            
+            // Reset game state
+            gameState.snake = [{x: 10, y: 10}];
+            gameState.directionQueue = [];
+            gameState.currentDirection = { x: 0, y: 0 };
+            gameState.score = 0;
+            gameState.bits = 0;
+            gameState.multiplier = 1;
+            gameState.speed = 1;
+            gameState.particles = [];
+            gameState.trails = [];
+            gameState.powerUps = [];
+            gameState.activePowerUp = null;
+            gameState.foodEatenCount = 0;
+            gameState.firstMove = false;
+            gameState.gameStartTime = Date.now();
+            gameState.lastUpdateTime = Date.now();
+            gameState.lastFrameTime = Date.now();
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.isGameOver = false;
+            gameState.hasStarted = true;
+            
+            // Update UI
+            scoreElement.textContent = '0';
+            bitsElement.textContent = '0';
+            multiplierValueElement.textContent = '1';
+            multiplierElement.classList.remove('active');
+            speedElement.textContent = '1.0';
+            powerUpIndicator.classList.remove('active');
+            gameOverDiv.classList.remove('show');
+            
+            // Reset avatar
+            currentAvatarIndex = 0;
+            currentAvatarImg.src = AVATARS[0];
+            avatarEmotion.classList.remove('show');
+            avatarDisplay.style.animation = 'float 3s ease-in-out infinite';
+            
+            // Clean up avatar trails
+            avatarTrails.forEach(trail => {
+                if (trail.parentNode) trail.remove();
+            });
+            avatarTrails = [];
+            
+            // Initialize audio
+            initAudio();
+            
+            // Generate initial food
+            generateFood();
+            
+            // Start game loop
+            gameLoop();
+        }
+        
+        function togglePause() {
+            if (!gameState.isRunning || gameState.isGameOver) return;
+            
+            gameState.isPaused = !gameState.isPaused;
+            pauseBtn.textContent = gameState.isPaused ? 'Resume' : 'Pause';
+            
+            if (!gameState.isPaused) {
+                gameState.lastFrameTime = Date.now();
+                gameState.lastUpdateTime = Date.now();
+                gameLoop();
+            }
+        }
+        
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            soundBtn.textContent = `Sound: ${gameState.soundEnabled ? 'ON' : 'OFF'}`;
+        }
+        
+        function generateFood() {
+            let attempts = 0;
+            let validPosition = false;
+            
+            while (!validPosition && attempts < MAX_FOOD_ATTEMPTS) {
+                gameState.foodX = Math.floor(Math.random() * tileCount);
+                gameState.foodY = Math.floor(Math.random() * tileCount);
+                
+                validPosition = !gameState.snake.some(segment => 
+                    segment.x === gameState.foodX && segment.y === gameState.foodY
+                );
+                
+                attempts++;
+            }
+            
+            // If we couldn't find a valid position, the game is won!
+            if (!validPosition) {
+                gameWon();
+                return;
+            }
+            
+            // Chance to spawn power-up
+            if (Math.random() < 0.1 && gameState.powerUps.length < 1) {
+                generatePowerUp();
+            }
+        }
+        
+        function generatePowerUp() {
+            const types = ['golden', 'speed', 'ghost'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            let attempts = 0;
+            let x, y, validPosition = false;
+            
+            while (!validPosition && attempts < MAX_FOOD_ATTEMPTS) {
+                x = Math.floor(Math.random() * tileCount);
+                y = Math.floor(Math.random() * tileCount);
+                
+                validPosition = !gameState.snake.some(s => s.x === x && s.y === y) && 
+                               !(x === gameState.foodX && y === gameState.foodY);
+                attempts++;
+            }
+            
+            if (validPosition) {
+                gameState.powerUps.push({ x, y, type, time: Date.now() });
+            }
+        }
+        
+        function updateGame(deltaTime) {
+            if (!gameState.isRunning || gameState.isPaused || gameState.isGameOver) return;
+            
+            // Process direction queue
+            processDirectionQueue();
+            
+            // Only move if direction is set
+            const dir = gameState.currentDirection;
+            if (dir.x === 0 && dir.y === 0) return;
+            
+            // Add trail with limit
+            if (gameState.snake.length > 0 && gameState.trails.length < MAX_TRAILS) {
+                gameState.trails.push({ 
+                    x: gameState.snake[0].x, 
+                    y: gameState.snake[0].y, 
+                    opacity: 0.3 
+                });
+            }
+            
+            // Calculate new head position
+            const head = {
+                x: gameState.snake[0].x + dir.x,
+                y: gameState.snake[0].y + dir.y
+            };
+            
+            // Check wall collision (with ghost mode)
+            if (gameState.activePowerUp === 'ghost') {
+                // Wrap around walls
+                if (head.x < 0) head.x = tileCount - 1;
+                if (head.x >= tileCount) head.x = 0;
+                if (head.y < 0) head.y = tileCount - 1;
+                if (head.y >= tileCount) head.y = 0;
+            } else {
+                // Normal collision
+                if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                    gameOver();
+                    return;
+                }
+            }
+            
+            // Check self collision
+            for (let segment of gameState.snake) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    if (gameState.activePowerUp !== 'ghost') {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+            
+            gameState.snake.unshift(head);
+            
+            // Check food collision
+            if (head.x === gameState.foodX && head.y === gameState.foodY) {
+                gameState.foodEatenCount++;
+                
+                // Update BITS and score with new system
+                if (gameState.activePowerUp === 'golden') {
+                    // Golden apple gives 5 bits
+                    for (let i = 0; i < 5; i++) {
+                        updateBitsAndScore();
+                    }
+                } else {
+                    // Normal food gives 1 bit
+                    updateBitsAndScore();
+                }
+                
+                // Increase speed based on bits collected
+                gameState.speed = 1 + Math.floor(gameState.bits / 10) * 0.1;
+                speedElement.textContent = gameState.speed.toFixed(1);
+                
+                // Effects
+                createParticles(
+                    head.x * GRID_SIZE + GRID_SIZE/2,
+                    head.y * GRID_SIZE + GRID_SIZE/2,
+                    '#3B82F6',
+                    15
+                );
+                
+                canvas.style.boxShadow = '0 0 40px rgba(59, 130, 246, 1)';
+                setTimeout(() => {
+                    canvas.style.boxShadow = '0 0 20px rgba(30, 58, 138, 0.3)';
+                }, 200);
+                
+                // Sound effect with pitch based on bits
+                playSound(440 + (gameState.bits % 20) * 25, 0.1);
+                
+                // Avatar reactions
+                const reactions = ['😋', '🤩', '✨', '💙', '🎯'];
+                showAvatarEmotion(reactions[Math.floor(Math.random() * reactions.length)]);
+                
+                // Create avatar trail at food position
+                const canvasRect = canvas.getBoundingClientRect();
+                createAvatarTrail(
+                    canvasRect.left + gameState.foodX * GRID_SIZE + GRID_SIZE/2,
+                    canvasRect.top + gameState.foodY * GRID_SIZE + GRID_SIZE/2
+                );
+                
+                generateFood();
+            } else {
+                gameState.snake.pop();
+            }
+            
+            // Check power-up collision
+            gameState.powerUps = gameState.powerUps.filter((powerUp, index) => {
+                if (head.x === powerUp.x && head.y === powerUp.y) {
+                    activatePowerUp(powerUp.type);
+                    
+                    createParticles(
+                        powerUp.x * GRID_SIZE + GRID_SIZE/2,
+                        powerUp.y * GRID_SIZE + GRID_SIZE/2,
+                        '#FFD700',
+                        20
+                    );
+                    
+                    playSound(880, 0.2, 'square');
+                    return false;
+                }
+                
+                // Remove old power-ups
+                return Date.now() - powerUp.time < 10000;
+            });
+            
+            // Update debug info
+            if (DEBUG_MODE) {
+                debugInfo.textContent = `FPS: ${Math.round(1000 / deltaTime)} | Particles: ${gameState.particles.length} | Trails: ${gameState.trails.length} | Bits: ${gameState.bits} | Multiplier: x${gameState.multiplier}`;
+            }
+        }
+        
+        function activatePowerUp(type) {
+            gameState.activePowerUp = type;
+            powerUpIndicator.classList.add('active');
+            
+            // Avatar reactions to power-ups
+            let emotion;
+            switch(type) {
+                case 'golden':
+                    emotion = '⭐';
+                    avatarDisplay.style.boxShadow = '0 0 40px rgba(255, 215, 0, 0.8)';
+                    break;
+                case 'speed':
+                    emotion = '⚡';
+                    avatarDisplay.style.boxShadow = '0 0 40px rgba(255, 99, 71, 0.8)';
+                    break;
+                case 'ghost':
+                    emotion = '👻';
+                    avatarDisplay.style.boxShadow = '0 0 40px rgba(230, 230, 250, 0.8)';
+                    break;
+            }
+            showAvatarEmotion(emotion);
+            
+            clearTimeout(timers.powerUp);
+            const duration = type === 'golden' ? 5000 : 8000;
+            
+            timers.powerUp = setTimeout(() => {
+                gameState.activePowerUp = null;
+                powerUpIndicator.classList.remove('active');
+                avatarDisplay.style.boxShadow = '0 0 20px rgba(30, 58, 138, 0.5)';
+            }, duration);
+        }
+        
+        function drawGame() {
+            try {
+                // Clear canvas
+                ctx.fillStyle = '#0D1117';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw grid pattern
+                ctx.strokeStyle = 'rgba(81, 47, 201, 0.05)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= tileCount; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * GRID_SIZE, 0);
+                    ctx.lineTo(i * GRID_SIZE, canvas.height);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * GRID_SIZE);
+                    ctx.lineTo(canvas.width, i * GRID_SIZE);
+                    ctx.stroke();
+                }
+                
+                // Draw and update trails
+                gameState.trails = gameState.trails.filter(trail => {
+                    ctx.fillStyle = `rgba(81, 47, 201, ${trail.opacity})`;
+                    ctx.fillRect(trail.x * GRID_SIZE + 4, trail.y * GRID_SIZE + 4, GRID_SIZE - 8, GRID_SIZE - 8);
+                    trail.opacity -= 0.02;
+                    return trail.opacity > 0;
+                });
+                
+                // Draw and update particles
+                gameState.particles = gameState.particles.filter(particle => {
+                    particle.update();
+                    if (particle.life > 0) {
+                        particle.draw();
+                        return true;
+                    }
+                    return false;
+                });
+                
+                // Draw snake
+                for (let i = 0; i < gameState.snake.length; i++) {
+                    const segment = gameState.snake[i];
+                    
+                    if (i === 0) {
+                        // Draw avatar as snake head
+                        if (avatarImages[currentAvatarIndex]) {
+                            ctx.save();
+                            
+                            // Create circular clipping path
+                            ctx.beginPath();
+                            ctx.arc(
+                                segment.x * GRID_SIZE + GRID_SIZE/2,
+                                segment.y * GRID_SIZE + GRID_SIZE/2,
+                                GRID_SIZE/2 - 2,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.clip();
+                            
+                            // Draw avatar with glow
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = gameState.activePowerUp === 'ghost' ? '#ffffff' : '#3B82F6';
+                            
+                            ctx.drawImage(
+                                avatarImages[currentAvatarIndex],
+                                segment.x * GRID_SIZE + 2,
+                                segment.y * GRID_SIZE + 2,
+                                GRID_SIZE - 4,
+                                GRID_SIZE - 4
+                            );
+                            
+                            // Draw power-up overlay if active
+                            if (gameState.activePowerUp) {
+                                ctx.fillStyle = gameState.activePowerUp === 'ghost' 
+                                    ? 'rgba(255, 255, 255, 0.3)'
+                                    : 'rgba(255, 215, 0, 0.3)';
+                                ctx.fillRect(
+                                    segment.x * GRID_SIZE + 2,
+                                    segment.y * GRID_SIZE + 2,
+                                    GRID_SIZE - 4,
+                                    GRID_SIZE - 4
+                                );
+                            }
+                            
+                            ctx.restore();
+                        } else {
+                            // Fallback to gradient if avatar not loaded
+                            const gradient = ctx.createRadialGradient(
+                                segment.x * GRID_SIZE + GRID_SIZE/2,
+                                segment.y * GRID_SIZE + GRID_SIZE/2,
+                                0,
+                                segment.x * GRID_SIZE + GRID_SIZE/2,
+                                segment.y * GRID_SIZE + GRID_SIZE/2,
+                                GRID_SIZE
+                            );
+                            
+                            gradient.addColorStop(0, '#3B82F6');
+                            gradient.addColorStop(0.5, '#1E3A8A');
+                            gradient.addColorStop(1, 'rgba(30, 58, 138, 0.3)');
+                            
+                            ctx.fillStyle = gradient;
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = '#1E3A8A';
+                            ctx.fillRect(segment.x * GRID_SIZE + 2, segment.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+                        }
+                    } else {
+                        // Snake body with gradient
+                        const opacity = 1 - (i / gameState.snake.length) * 0.3;
+                        ctx.fillStyle = gameState.activePowerUp === 'ghost' 
+                            ? `rgba(255, 255, 255, ${opacity * 0.6})`
+                            : `rgba(30, 58, 138, ${opacity})`;
+                        ctx.shadowBlur = 0;
+                        ctx.fillRect(segment.x * GRID_SIZE + 2, segment.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+                    }
+                }
+                
+                ctx.shadowBlur = 0;
+                
+                // Draw food as green snake emoji
+                const time = Date.now() / 1000;
+                const pulse = Math.sin(time * 5) * 0.1 + 0.9;
+                
+                ctx.save();
+                ctx.font = `${GRID_SIZE * pulse}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#4CAF50';
+                ctx.fillText('🐍', gameState.foodX * GRID_SIZE + GRID_SIZE/2, gameState.foodY * GRID_SIZE + GRID_SIZE/2);
+                ctx.restore();
+                
+                // Draw power-ups
+                gameState.powerUps.forEach(powerUp => {
+                    const age = Date.now() - powerUp.time;
+                    const blink = age > 7000 ? Math.sin(time * 10) > 0 : true;
+                    if (!blink) return;
+                    
+                    ctx.save();
+                    ctx.translate(powerUp.x * GRID_SIZE + GRID_SIZE/2, powerUp.y * GRID_SIZE + GRID_SIZE/2);
+                    ctx.rotate(-time * 2);
+                    
+                    let color, symbol;
+                    switch(powerUp.type) {
+                        case 'golden':
+                            color = '#FFD700';
+                            symbol = '★';
+                            break;
+                        case 'speed':
+                            color = '#FF6347';
+                            symbol = '⚡';
+                            break;
+                        case 'ghost':
+                            color = '#E6E6FA';
+                            symbol = '👻';
+                            break;
+                    }
+                    
+                    ctx.fillStyle = color;
+                    ctx.font = `${GRID_SIZE * 0.8}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = color;
+                    ctx.fillText(symbol, 0, 0);
+                    ctx.restore();
+                });
+            } catch (e) {
+                console.error('Draw error:', e);
+            }
+        }
+        
+        function gameOver() {
+            gameState.isRunning = false;
+            gameState.isGameOver = true;
+            
+            // Cancel animation frame
+            if (gameState.animationId) {
+                cancelAnimationFrame(gameState.animationId);
+                gameState.animationId = null;
+            }
+            
+            // Clean up timers
+            cleanupTimers();
+            
+            // Save high score
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                highScoreElement.textContent = gameState.highScore;
+                localStorage.setItem('dusaSnakeHighScore', gameState.highScore);
+            }
+            
+            // Show stats
+            finalScoreElement.textContent = gameState.score;
+            document.getElementById('foodEaten').textContent = gameState.foodEatenCount;
+            document.getElementById('maxCombo').textContent = gameState.maxCombo;
+            document.getElementById('timePlayed').textContent = Math.floor((Date.now() - gameState.gameStartTime) / 1000);
+            
+            // Screen shake effect
+            const originalTransform = canvas.style.transform;
+            let shakeIntensity = 10;
+            let shakeCount = 0;
+            timers.shake = setInterval(() => {
+                canvas.style.transform = `translate(${Math.random() * shakeIntensity - shakeIntensity/2}px, ${Math.random() * shakeIntensity - shakeIntensity/2}px)`;
+                shakeIntensity *= 0.9;
+                shakeCount++;
+                if (shakeCount > 20 || shakeIntensity < 0.1) {
+                    clearInterval(timers.shake);
+                    canvas.style.transform = originalTransform;
+                }
+            }, 50);
+            
+            // Death sound
+            playSound(220, 0.5, 'sawtooth');
+            
+            // Avatar reaction to game over
+            showAvatarEmotion('😵');
+            avatarDisplay.style.animation = 'shake 0.5s ease';
+            setTimeout(() => {
+                avatarDisplay.style.animation = 'float 3s ease-in-out infinite';
+            }, 500);
+            
+            // Show game over screen
+            setTimeout(() => {
+                gameOverDiv.classList.add('show');
+            }, 500);
+        }
+        
+        function gameWon() {
+            // Special case when snake fills entire board
+            gameState.score += 1000;
+            scoreElement.textContent = gameState.score;
+            playSound(880, 0.5);
+            setTimeout(() => playSound(1100, 0.5), 200);
+            setTimeout(() => playSound(1320, 0.5), 400);
+            gameOver();
+        }
+        
+        function gameLoop() {
+            if (!gameState.isRunning || gameState.isGameOver) return;
+            
+            const now = Date.now();
+            const deltaTime = Math.min(now - gameState.lastFrameTime, 100); // Cap delta time
+            
+            gameState.frameCount++;
+            
+            // Update game at consistent speed based on difficulty
+            const targetFPS = 10 * gameState.speed;
+            const frameInterval = 1000 / targetFPS;
+            
+            if (now - gameState.lastUpdateTime >= frameInterval) {
+                updateGame(deltaTime);
+                gameState.lastUpdateTime = now;
+            }
+            
+            drawGame();
+            gameState.lastFrameTime = now;
+            
+            if (gameState.isRunning && !gameState.isPaused) {
+                gameState.animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        // Initial draw
+        drawGame();
+        
+        // Prevent memory leaks on page unload
+        window.addEventListener('beforeunload', () => {
+            cleanupTimers();
+            if (gameState.animationId) {
+                cancelAnimationFrame(gameState.animationId);
+            }
+        });
+    </script>
+</body>
+</html>

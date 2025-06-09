@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DUSA Arcade - Modern Retro Gaming</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #0D1117;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(30, 58, 138, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+        }
+        
+        .header {
+            text-align: center;
+            padding: 4rem 2rem 2rem;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 4rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+        
+        .tagline {
+            font-size: 1.5rem;
+            color: #8B92A3;
+            margin-bottom: 3rem;
+        }
+        
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .game-card {
+            background-color: #161B22;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent, rgba(59, 130, 246, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(30, 58, 138, 0.3);
+        }
+        
+        .game-card:hover::before {
+            opacity: 1;
+        }
+        
+        .game-title {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #3B82F6;
+        }
+        
+        .game-description {
+            color: #8B92A3;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .game-features {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .game-features li {
+            padding: 0.5rem 0;
+            color: #60A5FA;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+        
+        .game-features li::before {
+            content: '✨';
+            position: absolute;
+            left: 0;
+        }
+        
+        .play-button {
+            background-color: #1E3A8A;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .play-button:hover {
+            background-color: #3B82F6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+        }
+        
+        .coming-soon {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .coming-soon .play-button {
+            background-color: #2D333B;
+            cursor: not-allowed;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #8B92A3;
+            border-top: 1px solid #2D333B;
+            margin-top: 4rem;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #3B82F6;
+            display: block;
+        }
+        
+        .stat-label {
+            color: #8B92A3;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 3rem;
+            }
+            
+            .tagline {
+                font-size: 1.2rem;
+            }
+            
+            .games-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>DUSA Arcade</h1>
+        <p class="tagline">Modern Retro Gaming with Avatar Progression</p>
+        
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-value">1</span>
+                <span class="stat-label">Games Available</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value">7</span>
+                <span class="stat-label">Unique Avatars</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value">∞</span>
+                <span class="stat-label">Fun Factor</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="games-grid">
+        <div class="game-card">
+            <h2 class="game-title">DUSA Snake</h2>
+            <p class="game-description">
+                A modern reimagining of the classic Nokia Snake game with avatar progression and BITS economy.
+            </p>
+            <ul class="game-features">
+                <li>Avatar evolution system</li>
+                <li>BITS multiplier progression</li>
+                <li>Power-ups and special modes</li>
+                <li>Mobile responsive controls</li>
+            </ul>
+            <a href="games/dusa-snake/index.html" class="play-button">Play Now</a>
+        </div>
+        
+        <div class="game-card coming-soon">
+            <h2 class="game-title">DUSA Tetris</h2>
+            <p class="game-description">
+                Stack blocks with style as your avatar cheers you on. Features combo systems and avatar reactions.
+            </p>
+            <ul class="game-features">
+                <li>Avatar commentary system</li>
+                <li>BITS for line clears</li>
+                <li>Special avatar blocks</li>
+                <li>Zen mode available</li>
+            </ul>
+            <button class="play-button">Coming Soon</button>
+        </div>
+        
+        <div class="game-card coming-soon">
+            <h2 class="game-title">DUSA Breakout</h2>
+            <p class="game-description">
+                Break blocks with your avatar-powered paddle. Collect BITS and unlock special abilities.
+            </p>
+            <ul class="game-features">
+                <li>Avatar paddle skins</li>
+                <li>Physics-based gameplay</li>
+                <li>Multi-ball mayhem</li>
+                <li>Boss battles</li>
+            </ul>
+            <button class="play-button">Coming Soon</button>
+        </div>
+        
+        <div class="game-card coming-soon">
+            <h2 class="game-title">DUSA Space Invaders</h2>
+            <p class="game-description">
+                Defend Earth with your avatar spaceship. Progressive waves and epic boss encounters.
+            </p>
+            <ul class="game-features">
+                <li>Avatar ship upgrades</li>
+                <li>Wave-based progression</li>
+                <li>Special weapons</li>
+                <li>Co-op mode planned</li>
+            </ul>
+            <button class="play-button">Coming Soon</button>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Built with 💙 using modern web technologies</p>
+        <p style="margin-top: 1rem; font-size: 0.9rem;">
+            DUSA Arcade - Where Classic Games Meet Modern Design
+        </p>
+    </div>
+    
+    <script>
+        // Add particle effects on hover
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('mouseenter', function(e) {
+                if (!this.classList.contains('coming-soon')) {
+                    createParticles(e.pageX, e.pageY);
+                }
+            });
+        });
+        
+        function createParticles(x, y) {
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.width = '4px';
+                particle.style.height = '4px';
+                particle.style.backgroundColor = '#3B82F6';
+                particle.style.borderRadius = '50%';
+                particle.style.pointerEvents = 'none';
+                particle.style.transform = `translate(-50%, -50%)`;
+                
+                document.body.appendChild(particle);
+                
+                const angle = (Math.PI * 2 / 5) * i;
+                const velocity = 2 + Math.random() * 2;
+                const lifetime = 1000;
+                
+                let start = Date.now();
+                
+                function animate() {
+                    const elapsed = Date.now() - start;
+                    const progress = elapsed / lifetime;
+                    
+                    if (progress >= 1) {
+                        particle.remove();
+                        return;
+                    }
+                    
+                    const dx = Math.cos(angle) * velocity * elapsed;
+                    const dy = Math.sin(angle) * velocity * elapsed + progress * 50;
+                    
+                    particle.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                    particle.style.opacity = 1 - progress;
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+        }
+    </script>
+</body>
+</html>
