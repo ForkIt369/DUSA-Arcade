@@ -103,27 +103,10 @@
         }
         
         .game-description {
-            color: #8B92A3;
-            margin-bottom: 1.5rem;
+            color: #C9D1D9;
+            margin-bottom: 2rem;
             line-height: 1.6;
-        }
-        
-        .game-features {
-            list-style: none;
-            margin-bottom: 1.5rem;
-        }
-        
-        .game-features li {
-            padding: 0.5rem 0;
-            color: #60A5FA;
-            position: relative;
-            padding-left: 1.5rem;
-        }
-        
-        .game-features li::before {
-            content: '✨';
-            position: absolute;
-            left: 0;
+            min-height: 60px;
         }
         
         .play-button {
@@ -194,6 +177,34 @@
             letter-spacing: 1px;
         }
         
+        .lore-section {
+            max-width: 800px;
+            margin: 2rem auto 3rem;
+            text-align: left;
+            background-color: #161B22;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #2D333B;
+        }
+        
+        .lore-section h2 {
+            color: #3B82F6;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        
+        .lore-section h3 {
+            color: #60A5FA;
+            margin: 1.5rem 0 0.5rem;
+            font-size: 1.3rem;
+        }
+        
+        .lore-section p {
+            color: #C9D1D9;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
         @media (max-width: 768px) {
             h1 {
                 font-size: 3rem;
@@ -213,92 +224,73 @@
 <body>
     <div class="header">
         <h1>DUSA Arcade</h1>
-        <p class="tagline">Modern Retro Gaming with Avatar Progression</p>
+        <p class="tagline">Join the Rebellion. Restore Decentralization. Have Fun.</p>
+        
+        <div class="lore-section">
+            <h2>A New Dawn on Metis</h2>
+            <p>The Metis community stood united, built on the ethos of Decentralization, Community Ownership, and Revenue Sharing. Builders and dreamers rallied together, creating infrastructure for a fairer, brighter future.</p>
+            
+            <h3>Ancient Tricks of the Trade</h3>
+            <p>But behind the curtain, the old tricks of wealth extraction reared their ugly head. Medusa emerged, claiming to be the "official mascot" of Metis with false promises and empty claims. Worst of all, she was green.</p>
+            
+            <h3>In Defiance, $DUSA Was Born</h3>
+            <p>From this betrayal, $DUSA rose—a force of rebellion to restore decentralization and integrity. <strong style="color: #3B82F6;">$DUSA is Blue.</strong> You won't stop her. She won't stop you.</p>
+        </div>
         
         <div class="stats">
             <div class="stat">
                 <span class="stat-value">2</span>
-                <span class="stat-label">Games Available</span>
+                <span class="stat-label">Battles Ready</span>
             </div>
             <div class="stat">
                 <span class="stat-value">7</span>
-                <span class="stat-label">Unique Avatars</span>
+                <span class="stat-label">Power Levels</span>
             </div>
             <div class="stat">
                 <span class="stat-value">∞</span>
-                <span class="stat-label">Fun Factor</span>
+                <span class="stat-label">Rebellion Spirit</span>
             </div>
         </div>
     </div>
     
     <div class="games-grid">
-        <div class="game-card">
+        <div class="game-card" onclick="window.location.href='games/dusa-snake/index.html'">
             <h2 class="game-title">DUSA Snake</h2>
             <p class="game-description">
-                A modern reimagining of the classic Nokia Snake game with avatar progression and BITS economy.
+                Guide $DUSA through the digital realm, collecting BITS to grow stronger. Each fragment of decentralization makes her more powerful in the fight against the green menace.
             </p>
-            <ul class="game-features">
-                <li>Avatar evolution system</li>
-                <li>BITS multiplier progression</li>
-                <li>Power-ups and special modes</li>
-                <li>Mobile responsive controls</li>
-            </ul>
-            <a href="games/dusa-snake/index.html" class="play-button">Play Now</a>
+            <a href="games/dusa-snake/index.html" class="play-button">Enter Battle</a>
         </div>
         
-        <div class="game-card">
+        <div class="game-card" onclick="window.location.href='games/dusa-pong/index.html'">
             <h2 class="game-title">DUSA Pong</h2>
             <p class="game-description">
-                Battle against a snake AI with your mirror paddle. Features color-changing flame balls and strategic scoring.
+                Face off against FakeDusa in an epic mirror duel. Your blue flame battles her green deception. First to seven wins the round, but the war for Metis continues.
             </p>
-            <ul class="game-features">
-                <li>Mirror vs Snake gameplay</li>
-                <li>Color-changing flame ball</li>
-                <li>Progressive difficulty system</li>
-                <li>Score loss mechanics</li>
-            </ul>
-            <a href="games/dusa-pong/index.html" class="play-button">Play Now</a>
+            <a href="games/dusa-pong/index.html" class="play-button">Enter Battle</a>
         </div>
         
         <div class="game-card coming-soon">
             <h2 class="game-title">DUSA Tetris</h2>
             <p class="game-description">
-                Stack blocks with style as your avatar cheers you on. Features combo systems and avatar reactions.
+                Build the foundations of a new decentralized order. Stack the blocks of freedom while FakeDusa tries to corrupt your construction. Coming soon to the rebellion.
             </p>
-            <ul class="game-features">
-                <li>Avatar commentary system</li>
-                <li>BITS for line clears</li>
-                <li>Special avatar blocks</li>
-                <li>Zen mode available</li>
-            </ul>
             <button class="play-button">Coming Soon</button>
         </div>
         
         <div class="game-card coming-soon">
             <h2 class="game-title">DUSA Breakout</h2>
             <p class="game-description">
-                Break blocks with your avatar-powered paddle. Collect BITS and unlock special abilities.
+                Break through the walls of centralized control. Each brick destroyed weakens FakeDusa's grip on Metis. The revolution needs you.
             </p>
-            <ul class="game-features">
-                <li>Avatar paddle skins</li>
-                <li>Physics-based gameplay</li>
-                <li>Multi-ball mayhem</li>
-                <li>Boss battles</li>
-            </ul>
             <button class="play-button">Coming Soon</button>
         </div>
         
         <div class="game-card coming-soon">
             <h2 class="game-title">DUSA Space Invaders</h2>
             <p class="game-description">
-                Defend Earth with your avatar spaceship. Progressive waves and epic boss encounters.
+                Defend the Metis blockchain from waves of green invaders. FakeDusa's army approaches from above, but $DUSA stands ready. The final battle awaits.
             </p>
-            <ul class="game-features">
-                <li>Avatar ship upgrades</li>
-                <li>Wave-based progression</li>
-                <li>Special weapons</li>
-                <li>Co-op mode planned</li>
-            </ul>
             <button class="play-button">Coming Soon</button>
         </div>
     </div>

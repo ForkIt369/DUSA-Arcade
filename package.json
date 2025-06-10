@@ -1,0 +1,33 @@
+{
+  "name": "dusa-arcade",
+  "version": "1.0.0",
+  "description": "Join the Rebellion. Restore Decentralization. Have Fun. - Classic arcade games reimagined with avatar progression and the $DUSA vs FakeDusa narrative.",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . -p 8000"
+  },
+  "keywords": [
+    "arcade",
+    "games",
+    "dusa",
+    "metis",
+    "blockchain",
+    "snake",
+    "pong",
+    "retro",
+    "gaming",
+    "avatar",
+    "progression"
+  ],
+  "author": "DUSA Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/dusa-arcade.git"
+  },
+  "homepage": "https://dusa-arcade.vercel.app",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
