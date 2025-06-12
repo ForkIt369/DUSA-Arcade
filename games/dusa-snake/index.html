@@ -467,7 +467,6 @@
         const finalScoreElement = document.getElementById('finalScore');
         const bitsElement = document.getElementById('bits');
         const multiplierElement = document.getElementById('multiplier');
-        const multiplierValueElement = document.getElementById('multiplierValue');
         const powerUpIndicator = document.getElementById('powerUpIndicator');
         const debugInfo = document.getElementById('debugInfo');
         const startBtn = document.getElementById('startBtn');
@@ -1030,7 +1029,6 @@
             // Update UI
             scoreElement.textContent = GAME_DURATION; // Start at 100 seconds
             bitsElement.textContent = '0';
-            multiplierValueElement.textContent = '1';
             multiplierElement.classList.remove('active');
             powerUpIndicator.classList.remove('active');
             gameOverDiv.classList.remove('show');
