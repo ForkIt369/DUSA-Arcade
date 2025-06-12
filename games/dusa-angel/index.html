@@ -248,6 +248,10 @@
         <div class="menu-overlay hidden" id="gameOverScreen">
             <div class="menu-content">
                 <h2 class="game-title">FLIGHT COMPLETE</h2>
+                <div style="width: 80px; height: 80px; margin: 0 auto 1rem; background: #3B82F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid #ffffff; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);">
+                    <img src="../../shared/assets/avatars/dusa-1.png" alt="DUSA Angel" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <div style="font-size: 40px; display: none;">👼</div>
+                </div>
                 <div class="final-score" id="finalScore">0</div>
                 <div class="best-score" id="bestScore">BEST: 0</div>
                 <div class="tap-to-play">FLY AGAIN</div>
@@ -723,6 +727,239 @@
             };
         }
         
+        // Power-up class
+        class PowerUp {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.size = 25;
+                this.collected = false;
+                this.rotation = 0;
+                this.floatOffset = Math.random() * Math.PI * 2;
+                this.glowPulse = 0;
+            }
+            
+            update(gameSpeed) {
+                this.x -= gameSpeed;
+                this.rotation += 0.02;
+                this.y += Math.sin(Date.now() * 0.002 + this.floatOffset) * 0.5;
+                this.glowPulse = (Math.sin(Date.now() * 0.005) + 1) * 0.5;
+            }
+            
+            draw() {
+                if (this.collected) return;
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                // Glow effect
+                const glowSize = this.size + this.glowPulse * 10;
+                let color, icon;
+                
+                switch(this.type) {
+                    case PowerUpType.MEDITATION:
+                        color = '#4FC3F7';
+                        icon = '🧘';
+                        break;
+                    case PowerUpType.SHIELD:
+                        color = '#FFD700';
+                        icon = '🛡️';
+                        break;
+                    case PowerUpType.HARMONY:
+                        color = '#9C27B0';
+                        icon = '✨';
+                        break;
+                    case PowerUpType.MAGNET:
+                        color = '#FFC107';
+                        icon = '🧲';
+                        break;
+                }
+                
+                // Outer glow
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
+                gradient.addColorStop(0, color + '80');
+                gradient.addColorStop(0.5, color + '40');
+                gradient.addColorStop(1, color + '00');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-glowSize, -glowSize, glowSize * 2, glowSize * 2);
+                
+                // Inner circle
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Icon
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(icon, 0, 0);
+                
+                ctx.restore();
+            }
+            
+            checkCollection(bird) {
+                const dist = Math.sqrt(
+                    Math.pow(bird.x + bird.width/2 - this.x, 2) + 
+                    Math.pow(bird.y + bird.height/2 - this.y, 2)
+                );
+                return dist < this.size + bird.width/2;
+            }
+        }
+        
+        // Tutorial hint class
+        class TutorialHint {
+            constructor(x, y, text, delay = 0) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.opacity = 0;
+                this.delay = delay;
+                this.appeared = false;
+                this.fadeSpeed = 0.01;
+            }
+            
+            update(gameSpeed) {
+                if (distance > this.delay && !this.appeared) {
+                    this.appeared = true;
+                }
+                
+                if (this.appeared) {
+                    if (this.opacity < 1 && distance < this.delay + 1000) {
+                        this.opacity += this.fadeSpeed;
+                    } else if (distance > this.delay + 1000) {
+                        this.opacity -= this.fadeSpeed;
+                    }
+                }
+                
+                this.x -= gameSpeed * 0.5; // Move slower than game speed
+            }
+            
+            draw() {
+                if (this.opacity <= 0) return;
+                
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '18px DM Sans';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Background
+                const padding = 20;
+                const width = ctx.measureText(this.text).width + padding * 2;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.roundRect(this.x - width/2, this.y - 20, width, 40, 20);
+                ctx.fill();
+                
+                // Text
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+        
+        // Wind current class
+        class WindCurrent {
+            constructor(x, y, strength, direction = 1) {
+                this.x = x;
+                this.y = y;
+                this.width = 100;
+                this.height = 150;
+                this.strength = strength; // -1 to 1
+                this.direction = direction; // 1 = up, -1 = down
+                this.particles = [];
+                this.particleTimer = 0;
+            }
+            
+            update(gameSpeed) {
+                this.x -= gameSpeed;
+                this.particleTimer++;
+                
+                // Create wind particles
+                if (this.particleTimer % 5 === 0) {
+                    this.particles.push({
+                        x: this.x + Math.random() * this.width,
+                        y: this.y + Math.random() * this.height,
+                        life: 1,
+                        size: Math.random() * 3 + 1
+                    });
+                }
+                
+                // Update particles
+                this.particles = this.particles.filter(p => {
+                    p.y += this.direction * this.strength * 2;
+                    p.x -= gameSpeed;
+                    p.life -= 0.02;
+                    return p.life > 0;
+                });
+            }
+            
+            draw() {
+                ctx.save();
+                
+                // Draw wind area
+                ctx.fillStyle = this.direction > 0 ? 'rgba(135, 206, 235, 0.1)' : 'rgba(255, 165, 0, 0.1)';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Draw particles
+                this.particles.forEach(p => {
+                    ctx.globalAlpha = p.life * 0.5;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                ctx.restore();
+            }
+            
+            affectBird(bird) {
+                if (bird.x + bird.width > this.x && bird.x < this.x + this.width &&
+                    bird.y + bird.height > this.y && bird.y < this.y + this.height) {
+                    return this.direction * this.strength * 0.15;
+                }
+                return 0;
+            }
+        }
+        
+        // Create tutorial hints
+        function createTutorialHints() {
+            pools.tutorials = [
+                new TutorialHint(GAME_WIDTH * 0.5, GAME_HEIGHT * 0.3, 'Tap gently to rise', 100),
+                new TutorialHint(GAME_WIDTH * 0.7, GAME_HEIGHT * 0.5, 'Find your rhythm', 200),
+                new TutorialHint(GAME_WIDTH * 0.6, GAME_HEIGHT * 0.7, 'Let gravity guide you', 300)
+            ];
+        }
+        
+        // Celebrate milestone
+        function celebrateMilestone(distance) {
+            // Create celebration particles
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 / 30) * i;
+                const velocity = {
+                    x: Math.cos(angle) * 4,
+                    y: Math.sin(angle) * 4
+                };
+                pools.particles.push(new Particle(
+                    GAME_WIDTH / 2,
+                    GAME_HEIGHT / 2,
+                    `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    velocity,
+                    6
+                ));
+            }
+            
+            // Milestone sound
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((note, i) => {
+                setTimeout(() => playSound(note, 0.2, 0.05), i * 100);
+            });
+        }
+        
         // Initialize environment
         function initEnvironment() {
             // Create clouds
@@ -875,15 +1112,25 @@
         function flap() {
             if (gameState !== GameState.PLAYING) return;
             
-            dusa.velocity = FLAP_FORCE;
+            // Harmony power-up gives smoother control
+            const flapForce = activePowerUps.harmony > 0 ? FLAP_FORCE * 0.8 : FLAP_FORCE;
+            dusa.velocity = flapForce;
             
-            // Musical flap sound
+            // Track flap timing for flow combo
+            const now = Date.now();
+            if (lastFlapTime > 0 && now - lastFlapTime > 2000) {
+                flowCombo = Math.max(0, flowCombo - 1);
+            }
+            lastFlapTime = now;
+            
+            // Musical flap sound (higher pitch with combo)
             const notes = [523.25, 587.33, 659.25, 698.46]; // C5, D5, E5, F5
-            playSound(notes[Math.floor(Math.random() * notes.length)], 0.1, 0.03);
+            const noteIndex = Math.min(flowCombo, notes.length - 1);
+            playSound(notes[noteIndex] * (1 + flowCombo * 0.1), 0.1, 0.03);
             
-            // Wing particles
-            const particleColor = timeOfDay > 0.5 ? '#87CEEB' : '#87CEEB';
-            createParticles(dusa.x, dusa.y + dusa.height/2, particleColor, 6, 1.5);
+            // Wing particles (more with combo)
+            const particleColor = flowCombo > 3 ? '#FFD700' : '#87CEEB';
+            createParticles(dusa.x, dusa.y + dusa.height/2, particleColor, 6 + flowCombo, 1.5);
         }
         
         let gameOverTime = 0;
@@ -962,10 +1209,31 @@
             difficulty.bitsChance = 0.8 - difficultyProgress * 0.3;
             
             // Update DUSA physics
-            dusa.velocity += GRAVITY;
+            let gravityModifier = GRAVITY;
+            
+            // Check wind currents
+            let windEffect = 0;
+            pools.windCurrents.forEach(wind => {
+                windEffect += wind.affectBird(dusa);
+            });
+            
+            // Apply meditation slow-time
+            if (activePowerUps.meditation > 0) {
+                gravityModifier *= 0.7;
+                activePowerUps.meditation--;
+            }
+            
+            // Apply harmony wings
+            if (activePowerUps.harmony > 0) {
+                gravityModifier *= 0.85;
+                dusa.velocity *= 0.98; // Extra glide
+                activePowerUps.harmony--;
+            }
+            
+            dusa.velocity += gravityModifier + windEffect;
             dusa.velocity *= GLIDE_FACTOR;
             dusa.velocity = Math.min(dusa.velocity, TERMINAL_VELOCITY);
-            dusa.y += dusa.velocity;
+            dusa.y += dusa.velocity * (activePowerUps.meditation > 0 ? 0.7 : 1);
             
             // Rotation based on velocity
             dusa.rotation = Math.min(Math.max(dusa.velocity * 0.04, -0.4), 0.4);
@@ -1034,8 +1302,15 @@
                 
                 // Check collision
                 if (barrier.checkCollision(dusa)) {
-                    gameOver();
-                    return false;
+                    if (activePowerUps.shield) {
+                        // Shield protects once
+                        activePowerUps.shield = false;
+                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#FFD700', 15, 2.5);
+                        playSound(440, 0.2, 0.05, 'triangle');
+                    } else {
+                        gameOver();
+                        return false;
+                    }
                 }
                 
                 // Check if passed
@@ -1043,10 +1318,25 @@
                     barrier.passed = true;
                     score++;
                     
-                    // Score sound with progression
-                    const baseNote = 440;
-                    const noteOffset = (score % 8) * 55;
-                    playSound(baseNote + noteOffset, 0.1, 0.02);
+                    // Check for perfect pass (center of gap)
+                    const playerCenter = dusa.y + dusa.height/2;
+                    const gapCenter = barrier.gapY + barrier.gapSize/2;
+                    const perfectThreshold = 30;
+                    
+                    if (Math.abs(playerCenter - gapCenter) < perfectThreshold) {
+                        perfectPasses++;
+                        score += 2; // Bonus points
+                        flowCombo++;
+                        createParticles(dusa.x, dusa.y + dusa.height/2, '#FFD700', 12, 2);
+                        // Perfect pass sound
+                        playSound(880, 0.15, 0.04);
+                        playSound(1108, 0.15, 0.03);
+                    } else {
+                        // Regular pass sound
+                        const baseNote = 440;
+                        const noteOffset = (score % 8) * 55;
+                        playSound(baseNote + noteOffset, 0.1, 0.02);
+                    }
                     
                     updateUI();
                 }
@@ -1055,8 +1345,25 @@
             });
             
             // Update BITS
+            const magnetRange = activePowerUps.magnet > 0 ? 100 : 0;
             pools.bits = pools.bits.filter(bit => {
                 bit.update(difficulty.speed);
+                
+                // Magnet attraction
+                if (magnetRange > 0) {
+                    const dist = Math.sqrt(
+                        Math.pow(bit.x - dusa.x - dusa.width/2, 2) + 
+                        Math.pow(bit.y - dusa.y - dusa.height/2, 2)
+                    );
+                    if (dist < magnetRange) {
+                        const angle = Math.atan2(
+                            dusa.y + dusa.height/2 - bit.y,
+                            dusa.x + dusa.width/2 - bit.x
+                        );
+                        bit.x += Math.cos(angle) * 3;
+                        bit.y += Math.sin(angle) * 3;
+                    }
+                }
                 
                 if (!bit.collected && bit.checkCollection(dusa)) {
                     bit.collected = true;
@@ -1074,6 +1381,52 @@
                 
                 return bit.x > -50;
             });
+            
+            // Update power-ups
+            pools.powerUps = pools.powerUps.filter(powerUp => {
+                powerUp.update(difficulty.speed);
+                
+                if (!powerUp.collected && powerUp.checkCollection(dusa)) {
+                    powerUp.collected = true;
+                    
+                    // Apply power-up effect
+                    switch(powerUp.type) {
+                        case PowerUpType.MEDITATION:
+                            activePowerUps.meditation = 300; // 5 seconds at 60fps
+                            break;
+                        case PowerUpType.SHIELD:
+                            activePowerUps.shield = true;
+                            break;
+                        case PowerUpType.HARMONY:
+                            activePowerUps.harmony = 360; // 6 seconds
+                            break;
+                        case PowerUpType.MAGNET:
+                            activePowerUps.magnet = 420; // 7 seconds
+                            break;
+                    }
+                    
+                    // Power-up sound
+                    playSound(1318.51, 0.2, 0.05); // E6
+                    playSound(1661.22, 0.2, 0.05); // G#6
+                    
+                    createParticles(powerUp.x, powerUp.y, '#3B82F6', 16, 2.5);
+                    return false;
+                }
+                
+                return powerUp.x > -50;
+            });
+            
+            // Update wind currents
+            pools.windCurrents = pools.windCurrents.filter(wind => {
+                wind.update(difficulty.speed);
+                return wind.x > -wind.width;
+            });
+            
+            // Update tutorials
+            pools.tutorials.forEach(tutorial => tutorial.update(difficulty.speed));
+            
+            // Update power-up timers
+            if (activePowerUps.magnet > 0) activePowerUps.magnet--;
             
             // Update environment
             pools.clouds.forEach(cloud => cloud.update(difficulty.speed * 0.5));
@@ -1207,10 +1560,18 @@
             ctx.rotate(dusa.rotation);
             
             // Glow effect
-            if (bits > 50) {
+            if (bits > 50 || activePowerUps.shield) {
                 const glowIntensity = Math.min(bits / 200, 1);
                 ctx.shadowBlur = 15 + glowIntensity * 15;
-                ctx.shadowColor = bits > 100 ? '#FFD700' : '#3B82F6';
+                if (activePowerUps.shield) {
+                    ctx.shadowColor = '#FFD700';
+                } else if (activePowerUps.meditation > 0) {
+                    ctx.shadowColor = '#4FC3F7';
+                } else if (activePowerUps.harmony > 0) {
+                    ctx.shadowColor = '#9C27B0';
+                } else {
+                    ctx.shadowColor = bits > 100 ? '#FFD700' : '#3B82F6';
+                }
             }
             
             // Draw image or placeholder
@@ -1253,11 +1614,20 @@
             // Draw far clouds
             pools.clouds.filter(c => c.layer === 0).forEach(cloud => cloud.draw());
             
+            // Draw wind currents
+            pools.windCurrents.forEach(wind => wind.draw());
+            
             // Draw barriers
             pools.barriers.forEach(barrier => barrier.draw());
             
             // Draw BITS
             pools.bits.forEach(bit => bit.draw());
+            
+            // Draw power-ups
+            pools.powerUps.forEach(powerUp => powerUp.draw());
+            
+            // Draw tutorials
+            pools.tutorials.forEach(tutorial => tutorial.draw());
             
             // Draw particles
             pools.particles.forEach(particle => particle.draw());
