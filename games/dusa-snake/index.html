@@ -577,6 +577,38 @@
         // Audio context
         let audioContext = null;
         
+        // Background music
+        let backgroundMusic = null;
+        
+        // Initialize background music
+        function initBackgroundMusic() {
+            if (!gameState.soundEnabled) return;
+            
+            if (!backgroundMusic) {
+                backgroundMusic = new Audio('RTH SnakeSong.mp3');
+                backgroundMusic.loop = true;
+                backgroundMusic.volume = 0.3;
+            }
+        }
+        
+        // Play background music
+        function playBackgroundMusic() {
+            if (!gameState.soundEnabled || !backgroundMusic) return;
+            
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play().catch(e => {
+                console.log('Music playback failed:', e);
+            });
+        }
+        
+        // Stop background music
+        function stopBackgroundMusic() {
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+            }
+        }
+        
         // Initialize
         highScoreElement.textContent = gameState.highScore;
         if (DEBUG_MODE) debugInfo.style.display = 'block';
@@ -891,6 +923,10 @@
                 cancelAnimationFrame(gameState.animationId);
             }
             
+            // Initialize and play background music
+            initBackgroundMusic();
+            playBackgroundMusic();
+            
             // Reset game state
             gameState.snake = [{x: 10, y: 10}];
             gameState.directionQueue = [];
@@ -950,7 +986,15 @@
             gameState.isPaused = !gameState.isPaused;
             pauseBtn.textContent = gameState.isPaused ? 'Resume' : 'Pause';
             
-            if (!gameState.isPaused) {
+            // Handle background music
+            if (gameState.isPaused) {
+                if (backgroundMusic && !backgroundMusic.paused) {
+                    backgroundMusic.pause();
+                }
+            } else {
+                if (backgroundMusic && backgroundMusic.paused && gameState.soundEnabled) {
+                    backgroundMusic.play().catch(e => console.log('Music resume failed:', e));
+                }
                 gameState.lastFrameTime = Date.now();
                 gameState.lastUpdateTime = Date.now();
                 gameLoop();
@@ -960,6 +1004,14 @@
         function toggleSound() {
             gameState.soundEnabled = !gameState.soundEnabled;
             soundBtn.textContent = `Sound: ${gameState.soundEnabled ? 'ON' : 'OFF'}`;
+            
+            // Handle background music
+            if (gameState.soundEnabled && gameState.isRunning && !gameState.isPaused) {
+                initBackgroundMusic();
+                playBackgroundMusic();
+            } else {
+                stopBackgroundMusic();
+            }
         }
         
         function generateFood() {
@@ -1346,6 +1398,9 @@
             gameState.isRunning = false;
             gameState.isGameOver = true;
             
+            // Stop background music
+            stopBackgroundMusic();
+            
             // Cancel animation frame
             if (gameState.animationId) {
                 cancelAnimationFrame(gameState.animationId);
@@ -1439,6 +1494,7 @@
         // Prevent memory leaks on page unload
         window.addEventListener('beforeunload', () => {
             cleanupTimers();
+            stopBackgroundMusic();
             if (gameState.animationId) {
                 cancelAnimationFrame(gameState.animationId);
             }
