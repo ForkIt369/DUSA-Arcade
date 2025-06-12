@@ -31,6 +31,13 @@ Face off against FakeDusa in an epic mirror duel. Your blue flame battles her gr
 - Color-changing flame ball mechanics
 - Progressive difficulty
 
+### DUSA Angel
+Take flight as DUSA Angel, soaring through FakeDusa's corrupted barriers. Liberate the digital realm one flap at a time in this endless battle for freedom.
+- Flappy Bird-style endless runner
+- Progressive difficulty with speed scaling
+- BITS collection system
+- Avatar evolution (3 stages)
+
 ## 🚀 Features
 
 - **Avatar Evolution**: 7 unique progression levels for both Blue DUSA (player) and Green DUSA (rival)
@@ -55,7 +62,8 @@ DUSA-Arcade/
 ├── index.html              # Main arcade hub
 ├── games/
 │   ├── dusa-snake/        # Snake game
-│   └── dusa-pong/         # Pong game
+│   ├── dusa-pong/         # Pong game
+│   └── dusa-angel/        # Angel game
 ├── shared/                # Shared resources
 │   ├── assets/
 │   │   └── avatars/       # Avatar collections
@@ -81,6 +89,10 @@ DUSA-Arcade/
 **DUSA Pong:**
 - W/S or Arrow Keys: Move paddle
 - Touch: Use on-screen buttons or swipe
+
+**DUSA Angel:**
+- Space or Click: Flap wings
+- Touch: Tap anywhere to fly
 
 ## 🔧 Local Development
 
