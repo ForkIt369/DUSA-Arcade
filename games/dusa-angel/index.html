@@ -327,14 +327,13 @@
         
         // Progressive difficulty
         let difficulty = {
-            speed: 1.5,
-            gapSize: 240,
-            barrierFrequency: 400,
-            bitsChance: 0.8
+            speed: 2.8,
+            gapSize: 200,
+            barrierFrequency: 350,
+            bitsChance: 0.7
         };
         
         // Game states
-        let isZenMode = true;
         let flowCombo = 0;
         let perfectPasses = 0;
         let lastFlapTime = 0;
@@ -344,14 +343,16 @@
             MEDITATION: 'meditation',
             SHIELD: 'shield',
             HARMONY: 'harmony',
-            MAGNET: 'magnet'
+            MAGNET: 'magnet',
+            MIRROR: 'mirror'
         };
         
         let activePowerUps = {
             meditation: 0,
             shield: false,
             harmony: 0,
-            magnet: 0
+            magnet: 0,
+            mirror: 0
         };
         
         // Physics constants
@@ -381,8 +382,8 @@
             clouds: [],
             stars: [],
             powerUps: [],
-            windCurrents: [],
-            tutorials: []
+            hoops: [],
+            messages: []
         };
         
         // Images
@@ -775,6 +776,10 @@
                         color = '#FFC107';
                         icon = '🧲';
                         break;
+                    case PowerUpType.MIRROR:
+                        color = '#E0E0E0';
+                        icon = '🪞';
+                        break;
                 }
                 
                 // Outer glow
@@ -810,8 +815,8 @@
             }
         }
         
-        // Tutorial hint class
-        class TutorialHint {
+        // Encouraging message class
+        class EncouragingMessage {
             constructor(x, y, text, delay = 0) {
                 this.x = x;
                 this.y = y;
@@ -819,7 +824,8 @@
                 this.opacity = 0;
                 this.delay = delay;
                 this.appeared = false;
-                this.fadeSpeed = 0.01;
+                this.fadeSpeed = 0.015;
+                this.life = 0;
             }
             
             update(gameSpeed) {
@@ -828,14 +834,15 @@
                 }
                 
                 if (this.appeared) {
-                    if (this.opacity < 1 && distance < this.delay + 1000) {
+                    this.life++;
+                    if (this.opacity < 1 && this.life < 120) {
                         this.opacity += this.fadeSpeed;
-                    } else if (distance > this.delay + 1000) {
+                    } else if (this.life > 120) {
                         this.opacity -= this.fadeSpeed;
                     }
                 }
                 
-                this.x -= gameSpeed * 0.5; // Move slower than game speed
+                this.x -= gameSpeed * 0.3; // Move slower than game speed
             }
             
             draw() {
@@ -844,95 +851,116 @@
                 ctx.save();
                 ctx.globalAlpha = this.opacity;
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '18px DM Sans';
+                ctx.font = '20px DM Sans';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // Background
-                const padding = 20;
+                // Glow background
+                const padding = 25;
                 const width = ctx.measureText(this.text).width + padding * 2;
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.roundRect(this.x - width/2, this.y - 20, width, 40, 20);
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+                ctx.roundRect(this.x - width/2, this.y - 25, width, 50, 25);
                 ctx.fill();
                 
                 // Text
                 ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#3B82F6';
                 ctx.fillText(this.text, this.x, this.y);
                 ctx.restore();
             }
         }
         
-        // Wind current class
-        class WindCurrent {
-            constructor(x, y, strength, direction = 1) {
+        // Hoop class for bonus targets
+        class Hoop {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.width = 100;
-                this.height = 150;
-                this.strength = strength; // -1 to 1
-                this.direction = direction; // 1 = up, -1 = down
-                this.particles = [];
-                this.particleTimer = 0;
+                this.outerRadius = 60;
+                this.innerRadius = 45;
+                this.passed = false;
+                this.collected = false;
+                this.rotation = 0;
+                this.pulse = 0;
             }
             
             update(gameSpeed) {
                 this.x -= gameSpeed;
-                this.particleTimer++;
-                
-                // Create wind particles
-                if (this.particleTimer % 5 === 0) {
-                    this.particles.push({
-                        x: this.x + Math.random() * this.width,
-                        y: this.y + Math.random() * this.height,
-                        life: 1,
-                        size: Math.random() * 3 + 1
-                    });
-                }
-                
-                // Update particles
-                this.particles = this.particles.filter(p => {
-                    p.y += this.direction * this.strength * 2;
-                    p.x -= gameSpeed;
-                    p.life -= 0.02;
-                    return p.life > 0;
-                });
+                this.rotation += 0.02;
+                this.pulse = Math.sin(Date.now() * 0.008) * 0.2;
             }
             
             draw() {
+                if (this.collected) return;
+                
                 ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
                 
-                // Draw wind area
-                ctx.fillStyle = this.direction > 0 ? 'rgba(135, 206, 235, 0.1)' : 'rgba(255, 165, 0, 0.1)';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
+                const currentRadius = this.outerRadius + this.pulse * 5;
                 
-                // Draw particles
-                this.particles.forEach(p => {
-                    ctx.globalAlpha = p.life * 0.5;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    ctx.fill();
-                });
+                // Outer glow
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentRadius + 20);
+                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+                gradient.addColorStop(0.7, 'rgba(59, 130, 246, 0.1)');
+                gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-currentRadius - 20, -currentRadius - 20, (currentRadius + 20) * 2, (currentRadius + 20) * 2);
+                
+                // Hoop ring
+                ctx.strokeStyle = this.passed ? '#00FF00' : '#3B82F6';
+                ctx.lineWidth = 8;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.passed ? '#00FF00' : '#3B82F6';
+                ctx.beginPath();
+                ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Inner highlight
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.arc(0, 0, currentRadius - 3, 0, Math.PI * 2);
+                ctx.stroke();
                 
                 ctx.restore();
             }
             
-            affectBird(bird) {
-                if (bird.x + bird.width > this.x && bird.x < this.x + this.width &&
-                    bird.y + bird.height > this.y && bird.y < this.y + this.height) {
-                    return this.direction * this.strength * 0.15;
+            checkPass(bird) {
+                if (!this.passed && bird.x > this.x - 10 && bird.x < this.x + 10) {
+                    const birdCenter = bird.y + bird.height/2;
+                    const dist = Math.abs(birdCenter - this.y);
+                    if (dist < this.innerRadius) {
+                        this.passed = true;
+                        return true;
+                    }
                 }
-                return 0;
+                return false;
             }
         }
         
-        // Create tutorial hints
-        function createTutorialHints() {
-            pools.tutorials = [
-                new TutorialHint(GAME_WIDTH * 0.5, GAME_HEIGHT * 0.3, 'Tap gently to rise', 100),
-                new TutorialHint(GAME_WIDTH * 0.7, GAME_HEIGHT * 0.5, 'Find your rhythm', 200),
-                new TutorialHint(GAME_WIDTH * 0.6, GAME_HEIGHT * 0.7, 'Let gravity guide you', 300)
+        
+        // Create encouraging messages
+        function createEncouragingMessages() {
+            const messages = [
+                'Soar with grace ✨',
+                'Find your flow 🌊', 
+                'Dance through the sky 💃',
+                'Embrace the journey 🎅',
+                'You\'re flying beautifully! 🥰',
+                'Keep that rhythm going! 🎵',
+                'Graceful as an angel 👼'
             ];
+            
+            pools.messages = [];
+            for (let i = 0; i < 5; i++) {
+                const delay = 1000 + i * 2000 + Math.random() * 1000;
+                const message = messages[Math.floor(Math.random() * messages.length)];
+                const x = GAME_WIDTH * 0.6 + Math.random() * GAME_WIDTH * 0.3;
+                const y = GAME_HEIGHT * 0.3 + Math.random() * GAME_HEIGHT * 0.4;
+                pools.messages.push(new EncouragingMessage(x, y, message, delay));
+            }
         }
         
         // Celebrate milestone
@@ -1062,17 +1090,16 @@
             bits = 0;
             distance = 0;
             timeOfDay = 0.2; // Start in morning
-            isZenMode = true;
             flowCombo = 0;
             perfectPasses = 0;
             lastFlapTime = 0;
             
-            // Reset difficulty to zen mode
+            // Reset difficulty
             difficulty = {
-                speed: 1.5,
-                gapSize: 240,
-                barrierFrequency: 400,
-                bitsChance: 0.8
+                speed: 2.8,
+                gapSize: 200,
+                barrierFrequency: 350,
+                bitsChance: 0.7
             };
             
             // Reset power-ups
@@ -1080,7 +1107,8 @@
                 meditation: 0,
                 shield: false,
                 harmony: 0,
-                magnet: 0
+                magnet: 0,
+                mirror: 0
             };
             
             // Reset DUSA
@@ -1094,11 +1122,11 @@
             pools.bits = [];
             pools.particles = [];
             pools.powerUps = [];
-            pools.windCurrents = [];
-            pools.tutorials = [];
+            pools.hoops = [];
+            pools.messages = [];
             
-            // Create tutorial hints for zen mode
-            createTutorialHints();
+            // Create encouraging messages
+            createEncouragingMessages();
             
             // Hide/show screens
             document.getElementById('menuScreen').classList.add('hidden');
@@ -1170,70 +1198,33 @@
             // Update time of day
             timeOfDay = (Date.now() % DAY_CYCLE_DURATION) / DAY_CYCLE_DURATION;
             
-            // Update difficulty based on distance
-            if (distance > 500 && isZenMode) {
-                isZenMode = false;
-                createParticles(GAME_WIDTH/2, GAME_HEIGHT/2, '#3B82F6', 20, 3);
-                // Achievement sound
-                playSound(523.25, 0.3, 0.05);
-                playSound(659.25, 0.3, 0.05);
-                playSound(783.99, 0.3, 0.05);
-            }
+            // Progressive difficulty curve (simplified)
+            const difficultyProgress = Math.min(distance / 8000, 1); // Max difficulty at 8000m
+            difficulty.speed = 2.8 + difficultyProgress * 1.5; // 2.8 to 4.3
+            difficulty.gapSize = 200 - difficultyProgress * 50; // 200 to 150
+            difficulty.barrierFrequency = 350 - difficultyProgress * 100; // 350 to 250
+            difficulty.bitsChance = 0.7 - difficultyProgress * 0.2; // 0.7 to 0.5
             
-            // Progressive difficulty curve
-            let difficultyProgress = 0;
-            if (distance < 500) {
-                // Zen mode - no change
-                difficulty.speed = 1.5;
-                difficulty.gapSize = 300;
-                difficulty.barrierFrequency = 600;
-            } else if (distance < 1500) {
-                // Very easy
-                difficultyProgress = (distance - 500) / 1000 * 0.2;
-                difficulty.speed = 1.5 + difficultyProgress * 0.5;
-                difficulty.gapSize = 240 - difficultyProgress * 20;
-                difficulty.barrierFrequency = 400 - difficultyProgress * 50;
-            } else if (distance < 3000) {
-                // Easy
-                difficultyProgress = 0.2 + (distance - 1500) / 1500 * 0.3;
-                difficulty.speed = 1.7 + difficultyProgress * 0.8;
-                difficulty.gapSize = 220 - difficultyProgress * 30;
-                difficulty.barrierFrequency = 350 - difficultyProgress * 50;
-            } else {
-                // Progressive challenge
-                difficultyProgress = 0.5 + Math.min((distance - 3000) / 7000, 0.5);
-                difficulty.speed = 2.2 + difficultyProgress * 1.8;
-                difficulty.gapSize = 180 - difficultyProgress * 60;
-                difficulty.barrierFrequency = 300 - difficultyProgress * 100;
-            }
-            difficulty.bitsChance = 0.8 - difficultyProgress * 0.3;
-            
-            // Update DUSA physics
+            // Update DUSA physics (simplified)
             let gravityModifier = GRAVITY;
-            
-            // Check wind currents
-            let windEffect = 0;
-            pools.windCurrents.forEach(wind => {
-                windEffect += wind.affectBird(dusa);
-            });
             
             // Apply meditation slow-time
             if (activePowerUps.meditation > 0) {
-                gravityModifier *= 0.7;
+                gravityModifier *= 0.6;
                 activePowerUps.meditation--;
             }
             
             // Apply harmony wings
             if (activePowerUps.harmony > 0) {
-                gravityModifier *= 0.85;
-                dusa.velocity *= 0.98; // Extra glide
+                gravityModifier *= 0.8;
+                dusa.velocity *= 0.97; // Extra glide
                 activePowerUps.harmony--;
             }
             
-            dusa.velocity += gravityModifier + windEffect;
+            dusa.velocity += gravityModifier;
             dusa.velocity *= GLIDE_FACTOR;
             dusa.velocity = Math.min(dusa.velocity, TERMINAL_VELOCITY);
-            dusa.y += dusa.velocity * (activePowerUps.meditation > 0 ? 0.7 : 1);
+            dusa.y += dusa.velocity * (activePowerUps.meditation > 0 ? 0.6 : 1);
             
             // Rotation based on velocity
             dusa.rotation = Math.min(Math.max(dusa.velocity * 0.04, -0.4), 0.4);
@@ -1258,9 +1249,9 @@
             // Update distance
             distance += difficulty.speed;
             
-            // Spawn barriers (not in zen mode)
-            if (!isZenMode && (pools.barriers.length === 0 || 
-                pools.barriers[pools.barriers.length - 1].x < GAME_WIDTH - difficulty.barrierFrequency)) {
+            // Spawn barriers
+            if (pools.barriers.length === 0 || 
+                pools.barriers[pools.barriers.length - 1].x < GAME_WIDTH - difficulty.barrierFrequency) {
                 const newBarrier = new Barrier(GAME_WIDTH);
                 pools.barriers.push(newBarrier);
                 
@@ -1281,7 +1272,7 @@
                 }
                 
                 // Spawn power-ups
-                if (distance > 500 && Math.random() < 0.15) {
+                if (Math.random() < 0.12) {
                     const types = Object.values(PowerUpType);
                     const type = types[Math.floor(Math.random() * types.length)];
                     const powerUpY = newBarrier.gapY + newBarrier.gapSize / 2;
@@ -1289,11 +1280,10 @@
                 }
             }
             
-            // Spawn wind currents
-            if (distance > 1000 && Math.random() < 0.01 && pools.windCurrents.length < 3) {
-                const direction = Math.random() < 0.5 ? 1 : -1;
-                const y = Math.random() * (GAME_HEIGHT - 150);
-                pools.windCurrents.push(new WindCurrent(GAME_WIDTH, y, 0.5 + Math.random() * 0.5, direction));
+            // Spawn hoops
+            if (Math.random() < 0.08) {
+                const hoopY = Math.random() * (GAME_HEIGHT - 120) + 60;
+                pools.hoops.push(new Hoop(GAME_WIDTH + 200, hoopY));
             }
             
             // Update barriers
@@ -1307,6 +1297,13 @@
                         activePowerUps.shield = false;
                         createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#FFD700', 15, 2.5);
                         playSound(440, 0.2, 0.05, 'triangle');
+                    } else if (activePowerUps.mirror > 0) {
+                        // Mirror bounces off barriers
+                        const bounceForce = -dusa.velocity * 1.2;
+                        dusa.velocity = Math.max(bounceForce, -8); // Strong upward bounce
+                        dusa.x = Math.max(barrier.x - dusa.width - 5, dusa.x - 3); // Push back slightly
+                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#E0E0E0', 20, 3);
+                        playSound(880, 0.15, 0.04, 'triangle');
                     } else {
                         gameOver();
                         return false;
@@ -1403,6 +1400,9 @@
                         case PowerUpType.MAGNET:
                             activePowerUps.magnet = 420; // 7 seconds
                             break;
+                        case PowerUpType.MIRROR:
+                            activePowerUps.mirror = 480; // 8 seconds
+                            break;
                     }
                     
                     // Power-up sound
@@ -1416,17 +1416,29 @@
                 return powerUp.x > -50;
             });
             
-            // Update wind currents
-            pools.windCurrents = pools.windCurrents.filter(wind => {
-                wind.update(difficulty.speed);
-                return wind.x > -wind.width;
+            // Update hoops
+            pools.hoops = pools.hoops.filter(hoop => {
+                hoop.update(difficulty.speed);
+                
+                if (!hoop.passed && hoop.checkPass(dusa)) {
+                    score += 10;
+                    flowCombo += 2;
+                    createParticles(hoop.x, hoop.y, '#3B82F6', 20, 3);
+                    // Hoop sound
+                    playSound(1046.50, 0.2, 0.05); // C6
+                    playSound(1318.51, 0.2, 0.05); // E6
+                    updateUI();
+                }
+                
+                return hoop.x > -100;
             });
             
-            // Update tutorials
-            pools.tutorials.forEach(tutorial => tutorial.update(difficulty.speed));
+            // Update encouraging messages
+            pools.messages.forEach(message => message.update(difficulty.speed));
             
             // Update power-up timers
             if (activePowerUps.magnet > 0) activePowerUps.magnet--;
+            if (activePowerUps.mirror > 0) activePowerUps.mirror--;
             
             // Update environment
             pools.clouds.forEach(cloud => cloud.update(difficulty.speed * 0.5));
@@ -1464,6 +1476,9 @@
             }
             if (activePowerUps.magnet > 0) {
                 indicators.innerHTML += '<span style="background: #FFC107; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🧲</span>';
+            }
+            if (activePowerUps.mirror > 0) {
+                indicators.innerHTML += '<span style="background: #E0E0E0; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🪞</span>';
             }
             
             // Milestone celebrations
@@ -1569,6 +1584,8 @@
                     ctx.shadowColor = '#4FC3F7';
                 } else if (activePowerUps.harmony > 0) {
                     ctx.shadowColor = '#9C27B0';
+                } else if (activePowerUps.mirror > 0) {
+                    ctx.shadowColor = '#E0E0E0';
                 } else {
                     ctx.shadowColor = bits > 100 ? '#FFD700' : '#3B82F6';
                 }
@@ -1614,11 +1631,20 @@
             // Draw far clouds
             pools.clouds.filter(c => c.layer === 0).forEach(cloud => cloud.draw());
             
-            // Draw wind currents
-            pools.windCurrents.forEach(wind => wind.draw());
+            // Draw hoops
+            pools.hoops.forEach(hoop => hoop.draw());
             
-            // Draw barriers
-            pools.barriers.forEach(barrier => barrier.draw());
+            // Draw barriers (blue if mirror active)
+            pools.barriers.forEach(barrier => {
+                if (activePowerUps.mirror > 0) {
+                    ctx.save();
+                    ctx.filter = 'hue-rotate(240deg)';
+                    barrier.draw();
+                    ctx.restore();
+                } else {
+                    barrier.draw();
+                }
+            });
             
             // Draw BITS
             pools.bits.forEach(bit => bit.draw());
@@ -1626,8 +1652,8 @@
             // Draw power-ups
             pools.powerUps.forEach(powerUp => powerUp.draw());
             
-            // Draw tutorials
-            pools.tutorials.forEach(tutorial => tutorial.draw());
+            // Draw encouraging messages
+            pools.messages.forEach(message => message.draw());
             
             // Draw particles
             pools.particles.forEach(particle => particle.draw());
@@ -1640,19 +1666,6 @@
             // Draw near clouds
             pools.clouds.filter(c => c.layer === 1).forEach(cloud => cloud.draw());
             
-            // Draw zen mode message
-            if (isZenMode && gameState === GameState.PLAYING) {
-                ctx.save();
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.font = '24px DM Sans';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('Zen Mode - Find Your Flow', GAME_WIDTH / 2, GAME_HEIGHT * 0.1);
-                ctx.font = '16px DM Sans';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.fillText(`${Math.floor(500 - distance)}m until challenges begin`, GAME_WIDTH / 2, GAME_HEIGHT * 0.15);
-                ctx.restore();
-            }
         }
         
         // Game loop
