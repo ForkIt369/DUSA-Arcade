@@ -515,11 +515,18 @@
             survivedGame: false
         };
         
+        // Global game variables
+        let snake = [];
+        let direction = { x: 0, y: 0 };
+        let food = null;
+        let powerUps = [];
+        
         // Timers to track and clean up
         const timers = {
             multiplier: null,
             powerUp: null,
-            shake: null
+            shake: null,
+            updateTimer: null
         };
         
         // Survival mode functions
@@ -848,7 +855,11 @@
         function cleanupTimers() {
             Object.keys(timers).forEach(key => {
                 if (timers[key]) {
-                    clearTimeout(timers[key]);
+                    if (key === 'updateTimer') {
+                        clearInterval(timers[key]);
+                    } else {
+                        clearTimeout(timers[key]);
+                    }
                     timers[key] = null;
                 }
             });
@@ -995,7 +1006,7 @@
             gameState.score = 0;
             gameState.bits = 0;
             gameState.multiplier = 1;
-            gameState.speed = 1;
+            gameState.speed = INITIAL_SPEED;
             gameState.particles = [];
             gameState.trails = [];
             gameState.powerUps = [];
@@ -1017,7 +1028,7 @@
             powerUps = [];
             
             // Update UI
-            scoreElement.textContent = '0';
+            scoreElement.textContent = GAME_DURATION; // Start at 100 seconds
             bitsElement.textContent = '0';
             multiplierValueElement.textContent = '1';
             multiplierElement.classList.remove('active');
@@ -1043,7 +1054,7 @@
             generateFood();
             
             // Start timer
-            setInterval(updateTimer, 100); // Update every 100ms
+            timers.updateTimer = setInterval(updateTimer, 100); // Update every 100ms
             
             // Start game loop
             gameLoop();
