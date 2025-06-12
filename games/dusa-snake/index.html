@@ -46,7 +46,7 @@
         h1 {
             font-size: 2.5rem;
             font-weight: 600;
-            margin-bottom: 1rem;
+            margin: 0 0 1.5rem 0;
             background: linear-gradient(135deg, #1E3A8A, #3B82F6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -65,8 +65,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             padding: 0 1rem;
+            gap: 2rem;
         }
         
         .score-container {
@@ -391,13 +392,12 @@
         </div>
         <div class="game-info">
             <div class="score-container">
-                <div class="score">Score: <span id="score">0</span></div>
+                <div class="score">Time: <span id="score">100</span>s</div>
                 <div class="bits">BITS: <span id="bits">0</span></div>
-                <div class="multiplier" id="multiplier">x<span id="multiplierValue">1</span> MULTIPLIER!</div>
+                <div class="multiplier" id="multiplier">MIRROR ACTIVE!</div>
             </div>
             <div>
-                <div class="high-score">Best: <span id="highScore">0</span></div>
-                <div class="speed-indicator">Speed: <span id="speed">1</span>x</div>
+                <div class="high-score">Best: <span id="highScore">0</span> BITS</div>
             </div>
         </div>
         <canvas id="gameCanvas" width="400" height="400"></canvas>
@@ -415,12 +415,14 @@
             <button id="downBtn">↓</button>
         </div>
         <div class="game-over" id="gameOver">
-            <h2>Game Over!</h2>
-            <p>Final Score: <span id="finalScore">0</span></p>
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <div id="avatarResult" style="width: 80px; height: 80px; margin: 1rem auto;">
+                <img id="resultAvatar" src="" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+            </div>
+            <p>BITS Collected: <span id="finalScore">0</span></p>
             <div class="stats">
-                <div>Food Eaten: <span id="foodEaten">0</span></div>
-                <div>Max Combo: <span id="maxCombo">0</span></div>
-                <div>Time Played: <span id="timePlayed">0</span>s</div>
+                <div id="survivalStatus"></div>
+                <div>Time Survived: <span id="timePlayed">0</span>s</div>
             </div>
             <button id="restartBtn">Play Again</button>
         </div>
@@ -435,6 +437,10 @@
         const MAX_TRAILS = 50;
         const MAX_FOOD_ATTEMPTS = 100;
         const DEBUG_MODE = false;
+        const GAME_DURATION = 100; // 100 seconds survival mode
+        const INITIAL_SPEED = 0.7; // Start slower
+        const MAX_SPEED = 1.0; // Current top speed
+        const SPEED_RAMP_TIME = 50; // Reach max speed at 50 seconds
         
         // Avatar system
         const AVATARS = [
@@ -462,7 +468,6 @@
         const bitsElement = document.getElementById('bits');
         const multiplierElement = document.getElementById('multiplier');
         const multiplierValueElement = document.getElementById('multiplierValue');
-        const speedElement = document.getElementById('speed');
         const powerUpIndicator = document.getElementById('powerUpIndicator');
         const debugInfo = document.getElementById('debugInfo');
         const startBtn = document.getElementById('startBtn');
@@ -493,7 +498,7 @@
             soundEnabled: true,
             hasStarted: false,
             firstMove: false,
-            speed: 1,
+            speed: INITIAL_SPEED,
             particles: [],
             trails: [],
             powerUps: [],
@@ -503,7 +508,11 @@
             lastUpdateTime: 0,
             lastFrameTime: 0,
             frameCount: 0,
-            animationId: null
+            animationId: null,
+            mirrorActive: false,
+            mirrorEndTime: 0,
+            elapsedTime: 0,
+            survivedGame: false
         };
         
         // Timers to track and clean up
@@ -513,65 +522,111 @@
             shake: null
         };
         
-        // BITS progression system
-        const BITS_MILESTONES = [8, 16, 32, 64];
-        const MULTIPLIER_VALUES = [2, 4, 8, 16];
-        
-        function calculateMultiplier(bits) {
-            let multiplier = 1;
-            for (let i = 0; i < BITS_MILESTONES.length; i++) {
-                if (bits >= BITS_MILESTONES[i]) {
-                    multiplier = MULTIPLIER_VALUES[i];
-                } else {
-                    break;
-                }
+        // Survival mode functions
+        function updateTimer() {
+            if (!gameState.isRunning || gameState.isPaused || gameState.isGameOver) return;
+            
+            const now = Date.now();
+            gameState.elapsedTime = Math.floor((now - gameState.gameStartTime) / 1000);
+            const timeRemaining = Math.max(0, GAME_DURATION - gameState.elapsedTime);
+            
+            scoreElement.textContent = timeRemaining;
+            
+            // Update speed based on elapsed time
+            if (gameState.elapsedTime <= SPEED_RAMP_TIME) {
+                const progress = gameState.elapsedTime / SPEED_RAMP_TIME;
+                gameState.speed = INITIAL_SPEED + (MAX_SPEED - INITIAL_SPEED) * progress;
             }
-            return multiplier;
+            
+            // Check if survived full duration
+            if (timeRemaining <= 0 && !gameState.survivedGame) {
+                gameState.survivedGame = true;
+                survivedGame();
+            }
         }
         
-        function updateBitsAndScore() {
+        function collectBit() {
             gameState.bits++;
             bitsElement.textContent = gameState.bits;
             
-            // Calculate new multiplier
-            const newMultiplier = calculateMultiplier(gameState.bits);
-            
-            // Check if we hit a milestone
-            if (newMultiplier > gameState.multiplier) {
-                gameState.multiplier = newMultiplier;
-                multiplierValueElement.textContent = gameState.multiplier;
-                multiplierElement.classList.add('active');
-                
-                // Milestone celebration effects
-                createParticles(
-                    canvas.width / 2,
-                    canvas.height / 2,
-                    '#3B82F6',
-                    30
-                );
-                
-                canvas.style.boxShadow = '0 0 60px rgba(59, 130, 246, 1)';
-                setTimeout(() => {
-                    canvas.style.boxShadow = '0 0 20px rgba(30, 58, 138, 0.3)';
-                }, 500);
-                
-                // Milestone sound sequence
-                playSound(880, 0.2);
-                setTimeout(() => playSound(1100, 0.2), 150);
-                setTimeout(() => playSound(1320, 0.2), 300);
-                
-                clearTimeout(timers.multiplier);
-                timers.multiplier = setTimeout(() => {
-                    multiplierElement.classList.remove('active');
-                }, 3000);
-            }
-            
-            // Score increases linearly by 1, multiplied by current multiplier
-            gameState.score += gameState.multiplier;
-            scoreElement.textContent = gameState.score;
-            
             // Update avatar based on BITS collected
             updateAvatar();
+            
+            // Collection effects
+            createParticles(
+                gameState.foodX * GRID_SIZE + GRID_SIZE/2,
+                gameState.foodY * GRID_SIZE + GRID_SIZE/2,
+                '#3B82F6',
+                15
+            );
+            
+            canvas.style.boxShadow = '0 0 40px rgba(59, 130, 246, 1)';
+            setTimeout(() => {
+                canvas.style.boxShadow = '0 0 20px rgba(30, 58, 138, 0.3)';
+            }, 200);
+            
+            // Sound effect with pitch based on bits
+            playSound(440 + (gameState.bits % 20) * 25, 0.1);
+            
+            // Avatar reactions
+            const reactions = ['😋', '🤩', '✨', '💙', '🎯'];
+            showAvatarEmotion(reactions[Math.floor(Math.random() * reactions.length)]);
+            
+            // Create avatar trail at food position
+            const canvasRect = canvas.getBoundingClientRect();
+            createAvatarTrail(
+                canvasRect.left + gameState.foodX * GRID_SIZE + GRID_SIZE/2,
+                canvasRect.top + gameState.foodY * GRID_SIZE + GRID_SIZE/2
+            );
+        }
+        
+        // Survived game - reached 100 seconds
+        function survivedGame() {
+            gameState.isRunning = false;
+            gameState.isGameOver = true;
+            gameState.survivedGame = true;
+            
+            // Stop background music
+            stopBackgroundMusic();
+            
+            // Cancel animation frame
+            if (gameState.animationId) {
+                cancelAnimationFrame(gameState.animationId);
+                gameState.animationId = null;
+            }
+            
+            // Victory sound
+            playSound(880, 0.5);
+            setTimeout(() => playSound(1100, 0.5), 200);
+            setTimeout(() => playSound(1320, 0.5), 400);
+            
+            // Update high score
+            if (gameState.bits > gameState.highScore) {
+                gameState.highScore = gameState.bits;
+                highScoreElement.textContent = gameState.highScore;
+                localStorage.setItem('dusaSnakeHighScore', gameState.highScore);
+            }
+            
+            // Show victory screen
+            document.getElementById('gameOverTitle').textContent = 'SURVIVED!';
+            document.getElementById('survivalStatus').textContent = '🏆 You survived the full 100 seconds! 🏆';
+            finalScoreElement.textContent = gameState.bits;
+            document.getElementById('timePlayed').textContent = '100';
+            
+            // Show avatar
+            const resultAvatar = document.getElementById('resultAvatar');
+            if (avatarImages[currentAvatarIndex]) {
+                resultAvatar.src = avatarImages[currentAvatarIndex].src;
+            }
+            
+            // Avatar celebration
+            showAvatarEmotion('🎉');
+            avatarDisplay.classList.add('celebrating');
+            
+            // Show game over screen
+            setTimeout(() => {
+                gameOverDiv.classList.add('show');
+            }, 500);
         }
         
         // Audio context
@@ -928,9 +983,11 @@
             playBackgroundMusic();
             
             // Reset game state
-            gameState.snake = [{x: 10, y: 10}];
+            snake = [{x: 10, y: 10}];
+            gameState.snake = snake;
             gameState.directionQueue = [];
             gameState.currentDirection = { x: 0, y: 0 };
+            direction = { x: 0, y: 0 };
             gameState.score = 0;
             gameState.bits = 0;
             gameState.multiplier = 1;
@@ -948,13 +1005,18 @@
             gameState.isPaused = false;
             gameState.isGameOver = false;
             gameState.hasStarted = true;
+            gameState.mirrorActive = false;
+            gameState.mirrorEndTime = 0;
+            gameState.elapsedTime = 0;
+            gameState.survivedGame = false;
+            food = null;
+            powerUps = [];
             
             // Update UI
             scoreElement.textContent = '0';
             bitsElement.textContent = '0';
             multiplierValueElement.textContent = '1';
             multiplierElement.classList.remove('active');
-            speedElement.textContent = '1.0';
             powerUpIndicator.classList.remove('active');
             gameOverDiv.classList.remove('show');
             
@@ -975,6 +1037,9 @@
             
             // Generate initial food
             generateFood();
+            
+            // Start timer
+            setInterval(updateTimer, 100); // Update every 100ms
             
             // Start game loop
             gameLoop();
@@ -1042,8 +1107,8 @@
         }
         
         function generatePowerUp() {
-            const types = ['golden', 'speed', 'ghost'];
-            const type = types[Math.floor(Math.random() * types.length)];
+            // Only mirror power-up now
+            const type = 'mirror';
             
             let attempts = 0;
             let x, y, validPosition = false;
@@ -1087,9 +1152,9 @@
                 y: gameState.snake[0].y + dir.y
             };
             
-            // Check wall collision (with ghost mode)
-            if (gameState.activePowerUp === 'ghost') {
-                // Wrap around walls
+            // Check wall collision (with mirror mode)
+            if (gameState.mirrorActive) {
+                // Wrap around walls with mirror
                 if (head.x < 0) head.x = tileCount - 1;
                 if (head.x >= tileCount) head.x = 0;
                 if (head.y < 0) head.y = tileCount - 1;
@@ -1105,7 +1170,7 @@
             // Check self collision
             for (let segment of gameState.snake) {
                 if (head.x === segment.x && head.y === segment.y) {
-                    if (gameState.activePowerUp !== 'ghost') {
+                    if (!gameState.mirrorActive) {
                         gameOver();
                         return;
                     }
