@@ -334,24 +334,15 @@
         };
         
         // Game states
-        let flowCombo = 0;
-        let perfectPasses = 0;
-        let lastFlapTime = 0;
+        let ringStreak = 0;
+        let lastRingTime = 0;
         
         // Power-ups
         const PowerUpType = {
-            MEDITATION: 'meditation',
-            SHIELD: 'shield',
-            HARMONY: 'harmony',
-            MAGNET: 'magnet',
             MIRROR: 'mirror'
         };
         
         let activePowerUps = {
-            meditation: 0,
-            shield: false,
-            harmony: 0,
-            magnet: 0,
             mirror: 0
         };
         
@@ -382,7 +373,7 @@
             clouds: [],
             stars: [],
             powerUps: [],
-            hoops: [],
+            rings: [],
             messages: []
         };
         
@@ -557,7 +548,7 @@
             }
         }
         
-        // Barrier class with variety
+        // Barrier class with snake-like appearance
         class Barrier {
             constructor(x) {
                 this.x = x;
@@ -565,10 +556,15 @@
                 this.gapSize = difficulty.gapSize;
                 this.passed = false;
                 this.width = 70;
+                this.segments = [];
                 
-                // Variety in barrier appearance
-                this.style = Math.random() < 0.3 ? 'crystal' : 'normal';
-                this.color = this.style === 'crystal' ? '#4FC3F7' : '#4CAF50';
+                // Create snake-like segments
+                for (let i = 0; i < 8; i++) {
+                    this.segments.push({
+                        offset: Math.sin(i * 0.5) * 10,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
             }
             
             update(speed) {
@@ -578,53 +574,66 @@
             draw() {
                 ctx.save();
                 
-                // Barrier color changes with time
-                const barrierColor = interpolateColor(
-                    hexToRgb(this.color),
-                    { r: 50, g: 50, b: 80 },
-                    timeOfDay * 0.5
-                );
+                // Update segment animation
+                this.segments.forEach(segment => {
+                    segment.phase += 0.05;
+                });
                 
-                ctx.fillStyle = `rgb(${barrierColor.r}, ${barrierColor.g}, ${barrierColor.b})`;
-                ctx.strokeStyle = `rgba(${barrierColor.r + 50}, ${barrierColor.g + 50}, ${barrierColor.b + 50}, 0.5)`;
+                // Snake-like green color (blue if mirror active)
+                const isBlue = activePowerUps.mirror > 0;
+                const baseColor = isBlue ? '#3B82F6' : '#4CAF50';
+                const darkColor = isBlue ? '#1E3A8A' : '#2E7D32';
+                
+                // Draw top snake barrier
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = darkColor;
                 ctx.lineWidth = 3;
                 
-                // Top barrier
-                if (this.style === 'crystal') {
-                    // Crystal style
+                // Snake segments for top barrier
+                for (let i = 0; i < this.segments.length; i++) {
+                    const segment = this.segments[i];
+                    const segmentHeight = this.gapY / this.segments.length;
+                    const y = i * segmentHeight;
+                    const wave = Math.sin(segment.phase) * segment.offset;
+                    
                     ctx.beginPath();
-                    ctx.moveTo(this.x + this.width/2, 0);
-                    ctx.lineTo(this.x, this.gapY - 20);
-                    ctx.lineTo(this.x + this.width/2, this.gapY);
-                    ctx.lineTo(this.x + this.width, this.gapY - 20);
-                    ctx.closePath();
+                    ctx.arc(this.x + this.width/2 + wave, y + segmentHeight/2, this.width/2, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.stroke();
-                } else {
-                    // Normal rounded style
+                    
+                    // Snake scales pattern
+                    ctx.globalAlpha = 0.3;
                     ctx.beginPath();
-                    ctx.roundRect(this.x, 0, this.width, this.gapY, [0, 0, 15, 15]);
-                    ctx.fill();
+                    ctx.arc(this.x + this.width/2 + wave - 10, y + segmentHeight/2, 15, 0, Math.PI * 2);
                     ctx.stroke();
+                    ctx.globalAlpha = 1;
                 }
                 
-                // Bottom barrier
+                // Draw bottom snake barrier
                 const bottomY = this.gapY + this.gapSize;
-                if (this.style === 'crystal') {
+                for (let i = 0; i < this.segments.length; i++) {
+                    const segment = this.segments[this.segments.length - 1 - i];
+                    const segmentHeight = (GAME_HEIGHT - bottomY) / this.segments.length;
+                    const y = bottomY + i * segmentHeight;
+                    const wave = Math.sin(segment.phase + Math.PI) * segment.offset;
+                    
                     ctx.beginPath();
-                    ctx.moveTo(this.x + this.width/2, GAME_HEIGHT);
-                    ctx.lineTo(this.x, bottomY + 20);
-                    ctx.lineTo(this.x + this.width/2, bottomY);
-                    ctx.lineTo(this.x + this.width, bottomY + 20);
-                    ctx.closePath();
+                    ctx.arc(this.x + this.width/2 + wave, y + segmentHeight/2, this.width/2, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.stroke();
-                } else {
+                    
+                    // Snake scales pattern
+                    ctx.globalAlpha = 0.3;
                     ctx.beginPath();
-                    ctx.roundRect(this.x, bottomY, this.width, GAME_HEIGHT - bottomY, [15, 15, 0, 0]);
-                    ctx.fill();
+                    ctx.arc(this.x + this.width/2 + wave + 10, y + segmentHeight/2, 15, 0, Math.PI * 2);
                     ctx.stroke();
+                    ctx.globalAlpha = 1;
                 }
+                
+                // Snake eyes on top segment
+                ctx.fillStyle = isBlue ? '#ffffff' : '#ffff00';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2 - 15, 30, 4, 0, Math.PI * 2);
+                ctx.arc(this.x + this.width/2 + 15, 30, 4, 0, Math.PI * 2);
+                ctx.fill();
                 
                 ctx.restore();
             }
@@ -639,12 +648,12 @@
             }
         }
         
-        // BITS class with animation
-        class Bit {
+        // Star class for collecting BITS
+        class StarBit {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.size = 20;
+                this.size = 12;
                 this.collected = false;
                 this.rotation = 0;
                 this.floatOffset = Math.random() * Math.PI * 2;
@@ -653,7 +662,7 @@
             
             update(gameSpeed) {
                 this.rotation += 0.04;
-                this.y += Math.sin(Date.now() * this.floatSpeed + this.floatOffset) * 0.8;
+                this.y += Math.sin(Date.now() * this.floatSpeed + this.floatOffset) * 0.5;
                 this.x -= gameSpeed;
             }
             
@@ -664,18 +673,18 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 
-                // Golden glow
-                const glowSize = this.size + Math.sin(Date.now() * 0.005) * 5;
+                // Subtle glow
+                const glowSize = this.size + Math.sin(Date.now() * 0.005) * 3;
                 const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
-                gradient.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(255, 215, 0, 0.3)');
-                gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
                 
                 ctx.fillStyle = gradient;
                 ctx.fillRect(-glowSize, -glowSize, glowSize * 2, glowSize * 2);
                 
                 // Star shape
-                ctx.fillStyle = '#FFD700';
+                ctx.fillStyle = '#ffffff';
                 ctx.beginPath();
                 for (let i = 0; i < 5; i++) {
                     const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
@@ -690,12 +699,6 @@
                     ctx.lineTo(innerX, innerY);
                 }
                 ctx.closePath();
-                ctx.fill();
-                
-                // Inner shine
-                ctx.fillStyle = '#FFED4E';
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
                 ctx.fill();
                 
                 ctx.restore();
@@ -728,12 +731,11 @@
             };
         }
         
-        // Power-up class
-        class PowerUp {
-            constructor(x, y, type) {
+        // Mirror Power-up class
+        class MirrorPowerUp {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.type = type;
                 this.size = 25;
                 this.collected = false;
                 this.rotation = 0;
@@ -757,51 +759,38 @@
                 
                 // Glow effect
                 const glowSize = this.size + this.glowPulse * 10;
-                let color, icon;
-                
-                switch(this.type) {
-                    case PowerUpType.MEDITATION:
-                        color = '#4FC3F7';
-                        icon = '🧘';
-                        break;
-                    case PowerUpType.SHIELD:
-                        color = '#FFD700';
-                        icon = '🛡️';
-                        break;
-                    case PowerUpType.HARMONY:
-                        color = '#9C27B0';
-                        icon = '✨';
-                        break;
-                    case PowerUpType.MAGNET:
-                        color = '#FFC107';
-                        icon = '🧲';
-                        break;
-                    case PowerUpType.MIRROR:
-                        color = '#E0E0E0';
-                        icon = '🪞';
-                        break;
-                }
                 
                 // Outer glow
                 const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
-                gradient.addColorStop(0, color + '80');
-                gradient.addColorStop(0.5, color + '40');
-                gradient.addColorStop(1, color + '00');
+                gradient.addColorStop(0, 'rgba(224, 224, 224, 0.5)');
+                gradient.addColorStop(0.5, 'rgba(224, 224, 224, 0.25)');
+                gradient.addColorStop(1, 'rgba(224, 224, 224, 0)');
                 ctx.fillStyle = gradient;
                 ctx.fillRect(-glowSize, -glowSize, glowSize * 2, glowSize * 2);
                 
-                // Inner circle
-                ctx.fillStyle = color;
+                // Mirror shape (reflective surface)
+                const mirrorGradient = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                mirrorGradient.addColorStop(0, '#E0E0E0');
+                mirrorGradient.addColorStop(0.5, '#ffffff');
+                mirrorGradient.addColorStop(1, '#C0C0C0');
+                ctx.fillStyle = mirrorGradient;
                 ctx.beginPath();
                 ctx.arc(0, 0, this.size, 0, Math.PI * 2);
                 ctx.fill();
                 
+                // Mirror shine effect
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(-this.size/3, -this.size/3, this.size/3, 0, Math.PI * 2);
+                ctx.stroke();
+                
                 // Icon
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#666666';
                 ctx.font = '16px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(icon, 0, 0);
+                ctx.fillText('🪞', 0, 0);
                 
                 ctx.restore();
             }
@@ -871,13 +860,13 @@
             }
         }
         
-        // Hoop class for bonus targets
-        class Hoop {
+        // Ring class for bonus BITS with streak system
+        class Ring {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.outerRadius = 60;
-                this.innerRadius = 45;
+                this.outerRadius = 50;
+                this.innerRadius = 35;
                 this.passed = false;
                 this.collected = false;
                 this.rotation = 0;
@@ -886,8 +875,8 @@
             
             update(gameSpeed) {
                 this.x -= gameSpeed;
-                this.rotation += 0.02;
-                this.pulse = Math.sin(Date.now() * 0.008) * 0.2;
+                this.rotation += 0.01;
+                this.pulse = Math.sin(Date.now() * 0.005) * 0.15;
             }
             
             draw() {
@@ -900,29 +889,39 @@
                 const currentRadius = this.outerRadius + this.pulse * 5;
                 
                 // Outer glow
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentRadius + 20);
-                gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-                gradient.addColorStop(0.7, 'rgba(59, 130, 246, 0.1)');
-                gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentRadius + 15);
+                gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+                gradient.addColorStop(0.7, 'rgba(255, 215, 0, 0.1)');
+                gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
                 ctx.fillStyle = gradient;
-                ctx.fillRect(-currentRadius - 20, -currentRadius - 20, (currentRadius + 20) * 2, (currentRadius + 20) * 2);
+                ctx.fillRect(-currentRadius - 15, -currentRadius - 15, (currentRadius + 15) * 2, (currentRadius + 15) * 2);
                 
-                // Hoop ring
-                ctx.strokeStyle = this.passed ? '#00FF00' : '#3B82F6';
-                ctx.lineWidth = 8;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.passed ? '#00FF00' : '#3B82F6';
+                // Ring
+                ctx.strokeStyle = this.passed ? '#00FF00' : '#FFD700';
+                ctx.lineWidth = 6;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.passed ? '#00FF00' : '#FFD700';
                 ctx.beginPath();
                 ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
                 ctx.stroke();
                 
-                // Inner highlight
+                // Inner ring
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
                 ctx.lineWidth = 2;
                 ctx.shadowBlur = 0;
                 ctx.beginPath();
                 ctx.arc(0, 0, currentRadius - 3, 0, Math.PI * 2);
                 ctx.stroke();
+                
+                // Streak indicator
+                if (ringStreak > 0) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 16px DM Sans';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const streakText = ringStreak >= 4 ? '64' : ringStreak === 3 ? '32' : ringStreak === 2 ? '16' : '8';
+                    ctx.fillText(streakText, 0, 0);
+                }
                 
                 ctx.restore();
             }
@@ -1090,9 +1089,8 @@
             bits = 0;
             distance = 0;
             timeOfDay = 0.2; // Start in morning
-            flowCombo = 0;
-            perfectPasses = 0;
-            lastFlapTime = 0;
+            ringStreak = 0;
+            lastRingTime = 0;
             
             // Reset difficulty
             difficulty = {
@@ -1104,10 +1102,6 @@
             
             // Reset power-ups
             activePowerUps = {
-                meditation: 0,
-                shield: false,
-                harmony: 0,
-                magnet: 0,
                 mirror: 0
             };
             
@@ -1122,7 +1116,7 @@
             pools.bits = [];
             pools.particles = [];
             pools.powerUps = [];
-            pools.hoops = [];
+            pools.rings = [];
             pools.messages = [];
             
             // Create encouraging messages
@@ -1140,25 +1134,13 @@
         function flap() {
             if (gameState !== GameState.PLAYING) return;
             
-            // Harmony power-up gives smoother control
-            const flapForce = activePowerUps.harmony > 0 ? FLAP_FORCE * 0.8 : FLAP_FORCE;
-            dusa.velocity = flapForce;
+            dusa.velocity = FLAP_FORCE;
             
-            // Track flap timing for flow combo
-            const now = Date.now();
-            if (lastFlapTime > 0 && now - lastFlapTime > 2000) {
-                flowCombo = Math.max(0, flowCombo - 1);
-            }
-            lastFlapTime = now;
+            // Simple flap sound
+            playSound(523.25, 0.1, 0.03);
             
-            // Musical flap sound (higher pitch with combo)
-            const notes = [523.25, 587.33, 659.25, 698.46]; // C5, D5, E5, F5
-            const noteIndex = Math.min(flowCombo, notes.length - 1);
-            playSound(notes[noteIndex] * (1 + flowCombo * 0.1), 0.1, 0.03);
-            
-            // Wing particles (more with combo)
-            const particleColor = flowCombo > 3 ? '#FFD700' : '#87CEEB';
-            createParticles(dusa.x, dusa.y + dusa.height/2, particleColor, 6 + flowCombo, 1.5);
+            // Wing particles
+            createParticles(dusa.x, dusa.y + dusa.height/2, '#87CEEB', 6, 1.5);
         }
         
         let gameOverTime = 0;
@@ -1205,26 +1187,11 @@
             difficulty.barrierFrequency = 350 - difficultyProgress * 100; // 350 to 250
             difficulty.bitsChance = 0.7 - difficultyProgress * 0.2; // 0.7 to 0.5
             
-            // Update DUSA physics (simplified)
-            let gravityModifier = GRAVITY;
-            
-            // Apply meditation slow-time
-            if (activePowerUps.meditation > 0) {
-                gravityModifier *= 0.6;
-                activePowerUps.meditation--;
-            }
-            
-            // Apply harmony wings
-            if (activePowerUps.harmony > 0) {
-                gravityModifier *= 0.8;
-                dusa.velocity *= 0.97; // Extra glide
-                activePowerUps.harmony--;
-            }
-            
-            dusa.velocity += gravityModifier;
+            // Update DUSA physics
+            dusa.velocity += GRAVITY;
             dusa.velocity *= GLIDE_FACTOR;
             dusa.velocity = Math.min(dusa.velocity, TERMINAL_VELOCITY);
-            dusa.y += dusa.velocity * (activePowerUps.meditation > 0 ? 0.6 : 1);
+            dusa.y += dusa.velocity;
             
             // Rotation based on velocity
             dusa.rotation = Math.min(Math.max(dusa.velocity * 0.04, -0.4), 0.4);
@@ -1255,35 +1222,36 @@
                 const newBarrier = new Barrier(GAME_WIDTH);
                 pools.barriers.push(newBarrier);
                 
-                // Spawn BITS
+                // Spawn stars (1 BIT each)
                 if (Math.random() < difficulty.bitsChance) {
-                    const bitY = newBarrier.gapY + newBarrier.gapSize / 2 + (Math.random() - 0.5) * 100;
-                    pools.bits.push(new Bit(newBarrier.x + newBarrier.width / 2, bitY));
+                    const starY = newBarrier.gapY + newBarrier.gapSize / 2 + (Math.random() - 0.5) * 100;
+                    pools.bits.push(new StarBit(newBarrier.x + newBarrier.width / 2, starY));
                     
-                    // Sometimes spawn bonus BITS cluster
-                    if (Math.random() < 0.2) {
-                        for (let i = 1; i <= 3; i++) {
-                            pools.bits.push(new Bit(
-                                newBarrier.x + newBarrier.width / 2 + i * 40,
-                                bitY + (Math.random() - 0.5) * 40
+                    // Sometimes spawn star cluster
+                    if (Math.random() < 0.3) {
+                        for (let i = 1; i <= 2; i++) {
+                            pools.bits.push(new StarBit(
+                                newBarrier.x + newBarrier.width / 2 + i * 30,
+                                starY + (Math.random() - 0.5) * 30
                             ));
                         }
                     }
                 }
                 
-                // Spawn power-ups
-                if (Math.random() < 0.12) {
-                    const types = Object.values(PowerUpType);
-                    const type = types[Math.floor(Math.random() * types.length)];
+                // Spawn mirror power-up occasionally
+                if (Math.random() < 0.08) {
                     const powerUpY = newBarrier.gapY + newBarrier.gapSize / 2;
-                    pools.powerUps.push(new PowerUp(newBarrier.x + 150, powerUpY, type));
+                    pools.powerUps.push(new MirrorPowerUp(newBarrier.x + 150, powerUpY));
                 }
             }
             
-            // Spawn hoops
-            if (Math.random() < 0.08) {
-                const hoopY = Math.random() * (GAME_HEIGHT - 120) + 60;
-                pools.hoops.push(new Hoop(GAME_WIDTH + 200, hoopY));
+            // Spawn rings (spread out more for challenge)
+            if (Math.random() < 0.03 && distance > 500) { // Less frequent, only after 500m
+                const ringY = Math.random() * (GAME_HEIGHT - 100) + 50;
+                // Make sure it's far from last ring
+                if (pools.rings.length === 0 || pools.rings[pools.rings.length - 1].x < GAME_WIDTH - 400) {
+                    pools.rings.push(new Ring(GAME_WIDTH + 100, ringY));
+                }
             }
             
             // Update barriers
@@ -1292,18 +1260,16 @@
                 
                 // Check collision
                 if (barrier.checkCollision(dusa)) {
-                    if (activePowerUps.shield) {
-                        // Shield protects once
-                        activePowerUps.shield = false;
-                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#FFD700', 15, 2.5);
-                        playSound(440, 0.2, 0.05, 'triangle');
-                    } else if (activePowerUps.mirror > 0) {
-                        // Mirror bounces off barriers
-                        const bounceForce = -dusa.velocity * 1.2;
+                    if (activePowerUps.mirror > 0) {
+                        // Mirror makes barriers act as bounce pads
+                        const bounceForce = -Math.abs(dusa.velocity) * 1.5;
                         dusa.velocity = Math.max(bounceForce, -8); // Strong upward bounce
                         dusa.x = Math.max(barrier.x - dusa.width - 5, dusa.x - 3); // Push back slightly
-                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#E0E0E0', 20, 3);
+                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#3B82F6', 20, 3);
                         playSound(880, 0.15, 0.04, 'triangle');
+                        
+                        // Graceful bounce animation
+                        dusa.rotation = -0.5;
                     } else {
                         gameOver();
                         return false;
@@ -1315,63 +1281,26 @@
                     barrier.passed = true;
                     score++;
                     
-                    // Check for perfect pass (center of gap)
-                    const playerCenter = dusa.y + dusa.height/2;
-                    const gapCenter = barrier.gapY + barrier.gapSize/2;
-                    const perfectThreshold = 30;
-                    
-                    if (Math.abs(playerCenter - gapCenter) < perfectThreshold) {
-                        perfectPasses++;
-                        score += 2; // Bonus points
-                        flowCombo++;
-                        createParticles(dusa.x, dusa.y + dusa.height/2, '#FFD700', 12, 2);
-                        // Perfect pass sound
-                        playSound(880, 0.15, 0.04);
-                        playSound(1108, 0.15, 0.03);
-                    } else {
-                        // Regular pass sound
-                        const baseNote = 440;
-                        const noteOffset = (score % 8) * 55;
-                        playSound(baseNote + noteOffset, 0.1, 0.02);
-                    }
-                    
+                    // Simple pass sound
+                    playSound(440, 0.1, 0.02);
                     updateUI();
                 }
                 
                 return barrier.x > -barrier.width;
             });
             
-            // Update BITS
-            const magnetRange = activePowerUps.magnet > 0 ? 100 : 0;
+            // Update star BITS
             pools.bits = pools.bits.filter(bit => {
                 bit.update(difficulty.speed);
                 
-                // Magnet attraction
-                if (magnetRange > 0) {
-                    const dist = Math.sqrt(
-                        Math.pow(bit.x - dusa.x - dusa.width/2, 2) + 
-                        Math.pow(bit.y - dusa.y - dusa.height/2, 2)
-                    );
-                    if (dist < magnetRange) {
-                        const angle = Math.atan2(
-                            dusa.y + dusa.height/2 - bit.y,
-                            dusa.x + dusa.width/2 - bit.x
-                        );
-                        bit.x += Math.cos(angle) * 3;
-                        bit.y += Math.sin(angle) * 3;
-                    }
-                }
-                
                 if (!bit.collected && bit.checkCollection(dusa)) {
                     bit.collected = true;
-                    bits += 5;
-                    score += 5;
+                    bits += 1;  // 1 BIT per star
                     
                     // Collection sound
-                    playSound(880, 0.15, 0.04, 'sine');
-                    playSound(1108, 0.15, 0.03, 'sine');
+                    playSound(880, 0.1, 0.03, 'sine');
                     
-                    createParticles(bit.x, bit.y, '#FFD700', 12, 2);
+                    createParticles(bit.x, bit.y, '#ffffff', 8, 1.5);
                     updateUI();
                     return false;
                 }
@@ -1379,65 +1308,74 @@
                 return bit.x > -50;
             });
             
-            // Update power-ups
+            // Update mirror power-ups
             pools.powerUps = pools.powerUps.filter(powerUp => {
                 powerUp.update(difficulty.speed);
                 
                 if (!powerUp.collected && powerUp.checkCollection(dusa)) {
                     powerUp.collected = true;
                     
-                    // Apply power-up effect
-                    switch(powerUp.type) {
-                        case PowerUpType.MEDITATION:
-                            activePowerUps.meditation = 300; // 5 seconds at 60fps
-                            break;
-                        case PowerUpType.SHIELD:
-                            activePowerUps.shield = true;
-                            break;
-                        case PowerUpType.HARMONY:
-                            activePowerUps.harmony = 360; // 6 seconds
-                            break;
-                        case PowerUpType.MAGNET:
-                            activePowerUps.magnet = 420; // 7 seconds
-                            break;
-                        case PowerUpType.MIRROR:
-                            activePowerUps.mirror = 480; // 8 seconds
-                            break;
-                    }
+                    // Apply mirror effect
+                    activePowerUps.mirror = 480; // 8 seconds
                     
                     // Power-up sound
                     playSound(1318.51, 0.2, 0.05); // E6
                     playSound(1661.22, 0.2, 0.05); // G#6
                     
-                    createParticles(powerUp.x, powerUp.y, '#3B82F6', 16, 2.5);
+                    createParticles(powerUp.x, powerUp.y, '#E0E0E0', 16, 2.5);
                     return false;
                 }
                 
                 return powerUp.x > -50;
             });
             
-            // Update hoops
-            pools.hoops = pools.hoops.filter(hoop => {
-                hoop.update(difficulty.speed);
+            // Update rings with streak system
+            pools.rings = pools.rings.filter(ring => {
+                ring.update(difficulty.speed);
                 
-                if (!hoop.passed && hoop.checkPass(dusa)) {
-                    score += 10;
-                    flowCombo += 2;
-                    createParticles(hoop.x, hoop.y, '#3B82F6', 20, 3);
-                    // Hoop sound
-                    playSound(1046.50, 0.2, 0.05); // C6
-                    playSound(1318.51, 0.2, 0.05); // E6
+                if (!ring.passed && ring.checkPass(dusa)) {
+                    // Update streak
+                    const now = Date.now();
+                    if (lastRingTime > 0 && now - lastRingTime > 5000) {
+                        // Too much time passed, reduce streak
+                        if (ringStreak > 0) ringStreak = Math.max(1, ringStreak - 1);
+                    } else {
+                        // Successful ring pass
+                        ringStreak = Math.min(ringStreak + 1, 4); // Cap at 4
+                    }
+                    lastRingTime = now;
+                    
+                    // Calculate BITS reward based on streak
+                    let bitsReward = 8; // Base reward
+                    if (ringStreak === 2) bitsReward = 16;
+                    else if (ringStreak === 3) bitsReward = 32;
+                    else if (ringStreak >= 4) bitsReward = 64;
+                    
+                    bits += bitsReward;
+                    createParticles(ring.x, ring.y, '#FFD700', 25, 3);
+                    
+                    // Ring collection sound (higher pitch with streak)
+                    playSound(1046.50 + ringStreak * 100, 0.2, 0.05);
+                    playSound(1318.51 + ringStreak * 100, 0.2, 0.05);
                     updateUI();
                 }
                 
-                return hoop.x > -100;
+                // Check if ring was missed
+                if (!ring.passed && ring.x + 100 < dusa.x) {
+                    // Missed ring, reduce streak
+                    if (ringStreak > 0) {
+                        ringStreak = Math.max(0, ringStreak - 1);
+                        updateUI();
+                    }
+                }
+                
+                return ring.x > -100;
             });
             
             // Update encouraging messages
             pools.messages.forEach(message => message.update(difficulty.speed));
             
             // Update power-up timers
-            if (activePowerUps.magnet > 0) activePowerUps.magnet--;
             if (activePowerUps.mirror > 0) activePowerUps.mirror--;
             
             // Update environment
@@ -1457,26 +1395,15 @@
             document.getElementById('bitsCount').textContent = `BITS: ${bits}`;
             document.getElementById('distance').textContent = `${Math.floor(distance)}m`;
             
-            // Show combo
-            if (flowCombo > 0) {
-                document.getElementById('bitsCount').textContent = `BITS: ${bits} | FLOW x${flowCombo}`;
+            // Show ring streak
+            if (ringStreak > 0) {
+                const streakValue = ringStreak >= 4 ? 64 : ringStreak === 3 ? 32 : ringStreak === 2 ? 16 : 8;
+                document.getElementById('bitsCount').textContent = `BITS: ${bits} | STREAK x${streakValue}`;
             }
             
             // Show active power-ups
             const indicators = document.getElementById('powerUpIndicators');
             indicators.innerHTML = '';
-            if (activePowerUps.meditation > 0) {
-                indicators.innerHTML += '<span style="background: #4FC3F7; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🧘</span>';
-            }
-            if (activePowerUps.shield) {
-                indicators.innerHTML += '<span style="background: #FFD700; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🛡️</span>';
-            }
-            if (activePowerUps.harmony > 0) {
-                indicators.innerHTML += '<span style="background: #9C27B0; padding: 4px 8px; border-radius: 10px; font-size: 12px;">✨</span>';
-            }
-            if (activePowerUps.magnet > 0) {
-                indicators.innerHTML += '<span style="background: #FFC107; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🧲</span>';
-            }
             if (activePowerUps.mirror > 0) {
                 indicators.innerHTML += '<span style="background: #E0E0E0; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🪞</span>';
             }
@@ -1575,16 +1502,10 @@
             ctx.rotate(dusa.rotation);
             
             // Glow effect
-            if (bits > 50 || activePowerUps.shield) {
+            if (bits > 50 || activePowerUps.mirror > 0) {
                 const glowIntensity = Math.min(bits / 200, 1);
                 ctx.shadowBlur = 15 + glowIntensity * 15;
-                if (activePowerUps.shield) {
-                    ctx.shadowColor = '#FFD700';
-                } else if (activePowerUps.meditation > 0) {
-                    ctx.shadowColor = '#4FC3F7';
-                } else if (activePowerUps.harmony > 0) {
-                    ctx.shadowColor = '#9C27B0';
-                } else if (activePowerUps.mirror > 0) {
+                if (activePowerUps.mirror > 0) {
                     ctx.shadowColor = '#E0E0E0';
                 } else {
                     ctx.shadowColor = bits > 100 ? '#FFD700' : '#3B82F6';
@@ -1631,20 +1552,11 @@
             // Draw far clouds
             pools.clouds.filter(c => c.layer === 0).forEach(cloud => cloud.draw());
             
-            // Draw hoops
-            pools.hoops.forEach(hoop => hoop.draw());
+            // Draw rings
+            pools.rings.forEach(ring => ring.draw());
             
-            // Draw barriers (blue if mirror active)
-            pools.barriers.forEach(barrier => {
-                if (activePowerUps.mirror > 0) {
-                    ctx.save();
-                    ctx.filter = 'hue-rotate(240deg)';
-                    barrier.draw();
-                    ctx.restore();
-                } else {
-                    barrier.draw();
-                }
-            });
+            // Draw barriers (automatically blue when mirror active - handled in draw method)
+            pools.barriers.forEach(barrier => barrier.draw());
             
             // Draw BITS
             pools.bits.forEach(bit => bit.draw());
