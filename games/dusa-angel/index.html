@@ -240,6 +240,9 @@
         <div class="menu-overlay" id="menuScreen">
             <div class="menu-content">
                 <h1 class="game-title">DUSA Angel</h1>
+                <div id="menuAvatar" style="width: 120px; height: 120px; margin: 0 auto 1rem; position: relative;">
+                    <img src="assets/dusa%20ready.png" alt="DUSA Ready" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\"font-size: 60px;\">👼</div>';">
+                </div>
                 <p class="game-subtitle">Glide through an endless sky</p>
                 <div class="tap-to-play">TAP TO FLY</div>
             </div>
@@ -248,9 +251,8 @@
         <div class="menu-overlay hidden" id="gameOverScreen">
             <div class="menu-content">
                 <h2 class="game-title">FLIGHT COMPLETE</h2>
-                <div style="width: 80px; height: 80px; margin: 0 auto 1rem; background: #3B82F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid #ffffff; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);">
-                    <img src="../../shared/assets/avatars/dusa-1.png" alt="DUSA Angel" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <div style="font-size: 40px; display: none;">👼</div>
+                <div id="gameOverAvatar" style="width: 100px; height: 100px; margin: 0 auto 1rem; position: relative;">
+                    <img src="assets/dusa%20fall.png" alt="DUSA Fall" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\"font-size: 60px;\">👼</div>';">
                 </div>
                 <div class="final-score" id="finalScore">0</div>
                 <div class="best-score" id="bestScore">BEST: 0</div>
@@ -322,8 +324,10 @@
         let soundEnabled = true;
         
         // Day/Night cycle
-        let timeOfDay = 0; // 0-1, where 0.25 = noon, 0.75 = midnight
-        const DAY_CYCLE_DURATION = 120000; // 2 minutes per full cycle
+        let timeOfDay = 0.5; // Start at evening (0-1, where 0.25 = noon, 0.75 = midnight)
+        const JOURNEY_DURATION = 301000; // 5 minutes and 1 second total
+        let journeyStartTime = 0;
+        let journeyComplete = false;
         
         // Progressive difficulty
         let difficulty = {
@@ -336,6 +340,7 @@
         // Game states
         let ringStreak = 0;
         let lastRingTime = 0;
+        let starFragments = 0;  // Collect 5 to form a star
         
         // Power-ups
         const PowerUpType = {
@@ -380,18 +385,43 @@
         // Images
         const images = {
             dusaAngel: new Image(),
-            loaded: false
+            dusaReady: new Image(),
+            dusaGo: new Image(),
+            dusaFall: new Image(),
+            loaded: 0,
+            total: 4
         };
         
         // Load images
-        images.dusaAngel.src = 'assets/dusa-angel.png';
-        images.dusaAngel.onload = () => {
-            images.loaded = true;
+        const imageUrls = {
+            dusaAngel: 'assets/dusa-angel.png',
+            dusaReady: 'assets/dusa%20ready.png',
+            dusaGo: 'assets/dusa-go.png',
+            dusaFall: 'assets/dusa%20fall.png'
         };
+        
+        Object.keys(imageUrls).forEach(key => {
+            images[key].src = imageUrls[key];
+            images[key].onload = () => {
+                images.loaded++;
+            };
+            images[key].onerror = () => {
+                console.warn(`Failed to load ${key}`);
+                images.loaded++;
+            };
+        });
         
         // Audio context
         let audioContext = null;
         let audioInitialized = false;
+        let musicGainNode = null;
+        let currentMusic = null;
+        let musicStartTime = 0;
+        let beatInterval = 0.5; // 120 BPM (0.5 seconds per beat)
+        let lastBeatTime = 0;
+        let beatPhase = 0;
+        let mp3Audio = null;
+        let synthLoopCount = 0;
         
         // Initialize audio
         function initAudio() {
@@ -399,6 +429,9 @@
             
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                musicGainNode = audioContext.createGain();
+                musicGainNode.gain.value = 0.15; // Background music volume
+                musicGainNode.connect(audioContext.destination);
                 audioInitialized = true;
             } catch (e) {
                 console.error('Audio context failed:', e);
@@ -430,50 +463,216 @@
             }
         }
         
-        // Cloud class
+        // Background music - Orinoco Flow inspired melody
+        function playBackgroundMusic() {
+            if (!soundEnabled || !audioContext || currentMusic) return;
+            
+            // Musical notes (frequencies in Hz)
+            const notes = {
+                C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23,
+                G4: 392.00, A4: 440.00, B4: 493.88,
+                C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46,
+                G5: 783.99, A5: 880.00
+            };
+            
+            // Simplified Orinoco Flow-inspired melody sequence
+            const melody = [
+                { note: notes.E4, duration: 0.5, delay: 0 },
+                { note: notes.G4, duration: 0.5, delay: 0.5 },
+                { note: notes.A4, duration: 0.5, delay: 1 },
+                { note: notes.G4, duration: 0.5, delay: 1.5 },
+                { note: notes.E4, duration: 1, delay: 2 },
+                
+                { note: notes.D4, duration: 0.5, delay: 3 },
+                { note: notes.E4, duration: 0.5, delay: 3.5 },
+                { note: notes.G4, duration: 0.5, delay: 4 },
+                { note: notes.E4, duration: 1, delay: 4.5 },
+                
+                { note: notes.C5, duration: 0.5, delay: 5.5 },
+                { note: notes.B4, duration: 0.5, delay: 6 },
+                { note: notes.A4, duration: 0.5, delay: 6.5 },
+                { note: notes.G4, duration: 0.5, delay: 7 },
+                { note: notes.E4, duration: 1, delay: 7.5 },
+                
+                // Repeat pattern
+                { note: notes.A4, duration: 0.5, delay: 9 },
+                { note: notes.G4, duration: 0.5, delay: 9.5 },
+                { note: notes.E4, duration: 0.5, delay: 10 },
+                { note: notes.D4, duration: 0.5, delay: 10.5 },
+                { note: notes.C4, duration: 1, delay: 11 }
+            ];
+            
+            const startTime = audioContext.currentTime;
+            const oscillators = [];
+            
+            // Create all notes
+            melody.forEach(({ note, duration, delay }) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+                
+                // Add some warmth with a low-pass filter
+                filter.type = 'lowpass';
+                filter.frequency.value = 2000;
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(musicGainNode);
+                
+                osc.frequency.value = note;
+                osc.type = 'triangle'; // Softer sound
+                
+                // Envelope
+                gain.gain.setValueAtTime(0, startTime + delay);
+                gain.gain.linearRampToValueAtTime(0.1, startTime + delay + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + delay + duration);
+                
+                osc.start(startTime + delay);
+                osc.stop(startTime + delay + duration);
+                
+                oscillators.push(osc);
+            });
+            
+            // Add a soft pad/chord in background
+            const padOsc = audioContext.createOscillator();
+            const padGain = audioContext.createGain();
+            padOsc.connect(padGain);
+            padGain.connect(musicGainNode);
+            
+            padOsc.frequency.value = notes.C4;
+            padOsc.type = 'sine';
+            padGain.gain.value = 0.03;
+            
+            padOsc.start(startTime);
+            padOsc.stop(startTime + 12);
+            
+            // Loop the music or transition to MP3
+            currentMusic = setTimeout(() => {
+                currentMusic = null;
+                synthLoopCount++;
+                
+                if (gameState === GameState.PLAYING) {
+                    if (synthLoopCount >= 4) {
+                        // After 4 loops (48 seconds), crossfade to MP3
+                        fadeToMP3();
+                    } else {
+                        playBackgroundMusic();
+                    }
+                }
+            }, 12000); // 12 second loop
+        }
+        
+        // Fade out synth and fade in MP3
+        function fadeToMP3() {
+            if (!soundEnabled) return;
+            
+            // Start fading out the music gain
+            const fadeOutDuration = 2; // 2 seconds fade
+            const startGain = musicGainNode.gain.value;
+            musicGainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + fadeOutDuration);
+            
+            // After fade out, switch to MP3
+            setTimeout(() => {
+                musicGainNode.gain.value = startGain; // Reset gain for future use
+                playMP3Music();
+            }, fadeOutDuration * 1000);
+        }
+        
+        // Play MP3 music
+        function playMP3Music() {
+            if (!soundEnabled || mp3Audio) return;
+            
+            try {
+                mp3Audio = new Audio('orinoco_flow-2.mp3');
+                mp3Audio.volume = 0; // Start at 0 for fade in
+                
+                mp3Audio.play().then(() => {
+                    // Fade in over 2 seconds
+                    let fadeInProgress = 0;
+                    const fadeInInterval = setInterval(() => {
+                        fadeInProgress += 0.05;
+                        if (fadeInProgress >= 1) {
+                            mp3Audio.volume = 0.3;
+                            clearInterval(fadeInInterval);
+                        } else {
+                            mp3Audio.volume = 0.3 * fadeInProgress;
+                        }
+                    }, 100); // Update every 100ms for smooth fade
+                }).catch(e => {
+                    console.log('MP3 playback failed, continuing with synth:', e);
+                    playBackgroundMusic(); // Fallback to synth
+                });
+                
+                // When MP3 ends, check for journey completion
+                mp3Audio.addEventListener('ended', () => {
+                    if (gameState === GameState.PLAYING && !journeyComplete) {
+                        journeyComplete = true;
+                        completeJourney();
+                    }
+                });
+            } catch (e) {
+                console.error('MP3 loading failed:', e);
+                playBackgroundMusic(); // Fallback
+            }
+        }
+        
+        // Stop background music
+        function stopBackgroundMusic() {
+            if (currentMusic) {
+                clearTimeout(currentMusic);
+                currentMusic = null;
+            }
+            if (mp3Audio) {
+                mp3Audio.pause();
+                mp3Audio = null;
+            }
+            synthLoopCount = 0;
+        }
+        
+        // Cloud class with improved parallax
         class Cloud {
             constructor(x, y, layer = 0) {
                 this.x = x;
                 this.y = y;
                 this.layer = layer; // 0 = far, 1 = near
-                this.width = 80 + Math.random() * 120;
-                this.height = 40 + Math.random() * 30;
-                this.speed = (0.3 + Math.random() * 0.3) * (layer + 1);
-                this.opacity = 0.3 + Math.random() * 0.2 + (layer * 0.2);
+                this.width = 100 + Math.random() * 80;
+                this.height = 50 + Math.random() * 20;
+                this.speed = 0.2 + layer * 0.15; // More consistent speed
+                this.opacity = 0.15 + layer * 0.1; // Subtler opacity
+                this.shape = [];
+                
+                // Pre-generate cloud shape for consistency
+                const circles = 3 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < circles; i++) {
+                    this.shape.push({
+                        x: (i - circles/2) * (this.width / circles),
+                        y: Math.random() * 10 - 5,
+                        r: this.height / 2 + Math.random() * 10
+                    });
+                }
             }
             
             update(gameSpeed) {
                 this.x -= this.speed * gameSpeed;
-                if (this.x < -this.width - 50) {
-                    this.x = GAME_WIDTH + Math.random() * 200;
-                    this.y = Math.random() * (GAME_HEIGHT * 0.6);
+                if (this.x < -this.width - 100) {
+                    this.x = GAME_WIDTH + 100 + Math.random() * 200;
+                    this.y = Math.random() * (GAME_HEIGHT * 0.5) + 20;
                 }
             }
             
             draw() {
                 ctx.save();
-                ctx.globalAlpha = this.opacity * (1 - timeOfDay * 0.5);
+                ctx.globalAlpha = this.opacity;
                 
-                // Cloud color changes with time of day
-                const cloudColor = interpolateColor(
-                    { r: 255, g: 255, b: 255 },
-                    { r: 150, g: 150, b: 180 },
-                    timeOfDay
-                );
+                // Consistent cloud color
+                ctx.fillStyle = timeOfDay < 0.5 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(200, 200, 220, 0.9)';
                 
-                ctx.fillStyle = `rgb(${cloudColor.r}, ${cloudColor.g}, ${cloudColor.b})`;
-                
-                // Draw fluffy cloud
-                const circles = 4 + Math.floor(Math.random() * 2);
-                for (let i = 0; i < circles; i++) {
-                    const offsetX = (i - circles/2) * (this.width / circles);
-                    const offsetY = Math.sin(i * 0.8) * 8;
-                    const radius = this.height / 2 + Math.sin(i * 1.2) * 8;
-                    
+                // Draw cloud shape
+                this.shape.forEach(circle => {
                     ctx.beginPath();
-                    ctx.arc(this.x + offsetX, this.y + offsetY, radius, 0, Math.PI * 2);
+                    ctx.arc(this.x + circle.x, this.y + circle.y, circle.r, 0, Math.PI * 2);
                     ctx.fill();
-                }
+                });
                 
                 ctx.restore();
             }
@@ -648,22 +847,25 @@
             }
         }
         
-        // Star class for collecting BITS
-        class StarBit {
+        // Star fragment class - collect 5 to form a star
+        class StarFragment {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.size = 12;
+                this.size = 8;
                 this.collected = false;
-                this.rotation = 0;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = 0.02 + Math.random() * 0.02;
                 this.floatOffset = Math.random() * Math.PI * 2;
                 this.floatSpeed = 0.002 + Math.random() * 0.001;
+                this.pulse = 0;
             }
             
             update(gameSpeed) {
-                this.rotation += 0.04;
-                this.y += Math.sin(Date.now() * this.floatSpeed + this.floatOffset) * 0.5;
+                this.rotation += this.rotationSpeed;
+                this.y += Math.sin(Date.now() * this.floatSpeed + this.floatOffset) * 0.3;
                 this.x -= gameSpeed;
+                this.pulse = Math.sin(Date.now() * 0.005) * 0.2 + 1;
             }
             
             draw() {
@@ -673,29 +875,28 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 
-                // Subtle glow
-                const glowSize = this.size + Math.sin(Date.now() * 0.005) * 3;
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                // Subtle sparkle effect
+                const sparkleSize = this.size * this.pulse;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath();
+                ctx.arc(0, 0, sparkleSize + 2, 0, Math.PI * 2);
+                ctx.fill();
                 
-                ctx.fillStyle = gradient;
-                ctx.fillRect(-glowSize, -glowSize, glowSize * 2, glowSize * 2);
-                
-                // Star shape
+                // Small star fragment
                 ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ffffff';
                 ctx.beginPath();
                 for (let i = 0; i < 5; i++) {
                     const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
-                    const x = Math.cos(angle) * this.size;
-                    const y = Math.sin(angle) * this.size;
+                    const x = Math.cos(angle) * sparkleSize;
+                    const y = Math.sin(angle) * sparkleSize;
                     if (i === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                     
                     const innerAngle = angle + Math.PI / 5;
-                    const innerX = Math.cos(innerAngle) * (this.size * 0.4);
-                    const innerY = Math.sin(innerAngle) * (this.size * 0.4);
+                    const innerX = Math.cos(innerAngle) * (sparkleSize * 0.4);
+                    const innerY = Math.sin(innerAngle) * (sparkleSize * 0.4);
                     ctx.lineTo(innerX, innerY);
                 }
                 ctx.closePath();
@@ -815,6 +1016,7 @@
                 this.appeared = false;
                 this.fadeSpeed = 0.015;
                 this.life = 0;
+                this.avatarRotation = 0;
             }
             
             update(gameSpeed) {
@@ -832,6 +1034,7 @@
                 }
                 
                 this.x -= gameSpeed * 0.3; // Move slower than game speed
+                this.avatarRotation += 0.02; // Gentle rotation
             }
             
             draw() {
@@ -844,18 +1047,46 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // Glow background
+                // Measure text for background
+                const textWidth = ctx.measureText(this.text).width;
                 const padding = 25;
-                const width = ctx.measureText(this.text).width + padding * 2;
+                const avatarSize = 30;
+                const totalWidth = textWidth + padding * 2 + avatarSize + 10; // Extra space for avatar
+                
+                // Glow background
                 ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
-                ctx.roundRect(this.x - width/2, this.y - 25, width, 50, 25);
+                ctx.roundRect(this.x - totalWidth/2, this.y - 25, totalWidth, 50, 25);
                 ctx.fill();
                 
-                // Text
+                // Draw small DUSA avatar
+                ctx.save();
+                const avatarX = this.x - totalWidth/2 + padding;
+                const avatarY = this.y;
+                ctx.translate(avatarX, avatarY);
+                ctx.rotate(Math.sin(this.avatarRotation) * 0.1); // Subtle wobble
+                
+                if (images.dusaReady && images.loaded > 0) {
+                    // Draw loaded image
+                    ctx.drawImage(images.dusaReady, -avatarSize/2, -avatarSize/2, avatarSize, avatarSize);
+                } else {
+                    // Fallback avatar
+                    ctx.fillStyle = '#3B82F6';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, avatarSize/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Simple wings
+                    ctx.fillStyle = 'rgba(135, 206, 235, 0.8)';
+                    ctx.fillRect(-avatarSize * 0.8, -5, avatarSize * 0.5, 10);
+                    ctx.fillRect(avatarSize * 0.3, -5, avatarSize * 0.5, 10);
+                }
+                ctx.restore();
+                
+                // Text (offset to make room for avatar)
                 ctx.fillStyle = '#ffffff';
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = '#3B82F6';
-                ctx.fillText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x + avatarSize/2, this.y);
                 ctx.restore();
             }
         }
@@ -980,11 +1211,118 @@
                 ));
             }
             
+            // Show celebration image briefly
+            if (images.dusaGo && images.loaded > 0) {
+                const celebrationImage = {
+                    x: GAME_WIDTH / 2,
+                    y: GAME_HEIGHT / 2,
+                    life: 120, // 2 seconds at 60fps
+                    size: 100,
+                    update: function() {
+                        if (this.life > 0) this.life--;
+                    },
+                    draw: function() {
+                        if (this.life > 0) {
+                            ctx.save();
+                            ctx.globalAlpha = Math.min(1, this.life / 30);
+                            ctx.translate(this.x, this.y);
+                            const scale = 1 + (120 - this.life) * 0.005;
+                            ctx.scale(scale, scale);
+                            ctx.drawImage(images.dusaGo, -this.size/2, -this.size/2, this.size, this.size);
+                            ctx.restore();
+                        }
+                    }
+                };
+                pools.particles.push(celebrationImage);
+            }
+            
             // Milestone sound
             const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
             notes.forEach((note, i) => {
                 setTimeout(() => playSound(note, 0.2, 0.05), i * 100);
             });
+        }
+        
+        // Complete journey - special ending
+        function completeJourney() {
+            gameState = GameState.GAME_OVER;
+            journeyComplete = true;
+            
+            // Stop any remaining music
+            stopBackgroundMusic();
+            
+            // Calculate total rewards
+            const journeyBonus = 1000;
+            const totalScore = score + Math.floor(bits * 10) + journeyBonus;
+            
+            // Epic celebration
+            for (let i = 0; i < 50; i++) {
+                const angle = (Math.PI * 2 / 50) * i;
+                const velocity = {
+                    x: Math.cos(angle) * 6,
+                    y: Math.sin(angle) * 6
+                };
+                pools.particles.push(new Particle(
+                    GAME_WIDTH / 2,
+                    GAME_HEIGHT / 2,
+                    `hsl(${i * 7}, 70%, 60%)`,
+                    velocity,
+                    8
+                ));
+            }
+            
+            // Victory fanfare
+            const victoryNotes = [
+                { note: 523.25, delay: 0 },    // C5
+                { note: 523.25, delay: 100 },  // C5
+                { note: 523.25, delay: 200 },  // C5
+                { note: 659.25, delay: 300 },  // E5
+                { note: 783.99, delay: 500 },  // G5
+                { note: 1046.50, delay: 700 }  // C6
+            ];
+            
+            victoryNotes.forEach(({ note, delay }) => {
+                setTimeout(() => playSound(note, 0.3, 0.08), delay);
+            });
+            
+            // Show journey complete screen
+            setTimeout(() => {
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                showJourneyCompleteScreen(totalScore);
+            }, 1000);
+        }
+        
+        // Show journey complete screen
+        function showJourneyCompleteScreen(totalScore) {
+            // Create custom completion screen
+            const menuScreen = document.getElementById('menuScreen');
+            menuScreen.innerHTML = `
+                <div class="menu-content">
+                    <h1 class="game-title" style="color: #FFD700;">JOURNEY COMPLETE!</h1>
+                    <div style="width: 150px; height: 150px; margin: 0 auto 1rem; position: relative;">
+                        <img src="assets/dusa-go.png" alt="DUSA Victory" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <p class="game-subtitle" style="color: #FFD700;">You've mastered the 5-minute flight!</p>
+                    
+                    <div style="margin: 2rem 0;">
+                        <div class="final-score" style="color: #FFD700;">${totalScore}</div>
+                        <div style="font-size: 1.2rem; margin: 1rem 0;">
+                            <div>Score: ${score}</div>
+                            <div>BITS Bonus: ${Math.floor(bits * 10)}</div>
+                            <div>Journey Bonus: 1000</div>
+                        </div>
+                    </div>
+                    
+                    <div class="tap-to-play" onclick="location.reload()">PLAY AGAIN</div>
+                </div>
+            `;
+            menuScreen.classList.remove('hidden');
+            
+            // Update best score if needed
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                localStorage.setItem('dusaAngelBest', bestScore);
+            }
         }
         
         // Initialize environment
@@ -1046,7 +1384,14 @@
                 e.stopPropagation();
                 soundEnabled = !soundEnabled;
                 document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
-                if (soundEnabled) initAudio();
+                if (soundEnabled) {
+                    initAudio();
+                    if (gameState === GameState.PLAYING) {
+                        playBackgroundMusic();
+                    }
+                } else {
+                    stopBackgroundMusic();
+                }
             });
             
             initEnvironment();
@@ -1088,9 +1433,13 @@
             score = 0;
             bits = 0;
             distance = 0;
-            timeOfDay = 0.2; // Start in morning
+            timeOfDay = 0.5; // Start at evening
             ringStreak = 0;
             lastRingTime = 0;
+            starFragments = 0;
+            journeyStartTime = Date.now();
+            journeyComplete = false;
+            synthLoopCount = 0;
             
             // Reset difficulty
             difficulty = {
@@ -1126,6 +1475,9 @@
             document.getElementById('menuScreen').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.add('hidden');
             
+            // Start background music
+            playBackgroundMusic();
+            
             // Update UI
             updateUI();
         }
@@ -1136,8 +1488,19 @@
             
             dusa.velocity = FLAP_FORCE;
             
-            // Simple flap sound
-            playSound(523.25, 0.1, 0.03);
+            // Musical flap sounds - notes in C major/A minor to match background
+            const flapNotes = [
+                261.63, // C4
+                329.63, // E4
+                392.00, // G4
+                440.00, // A4
+                523.25, // C5
+                659.25, // E5
+            ];
+            
+            // Pick a random note from the scale
+            const note = flapNotes[Math.floor(Math.random() * flapNotes.length)];
+            playSound(note, 0.1, 0.03);
             
             // Wing particles
             createParticles(dusa.x, dusa.y + dusa.height/2, '#87CEEB', 6, 1.5);
@@ -1149,6 +1512,9 @@
         function gameOver() {
             gameState = GameState.GAME_OVER;
             gameOverTime = Date.now();
+            
+            // Stop background music
+            stopBackgroundMusic();
             
             // Update best score
             if (score > bestScore) {
@@ -1177,8 +1543,22 @@
         function update(deltaTime) {
             if (gameState !== GameState.PLAYING) return;
             
-            // Update time of day
-            timeOfDay = (Date.now() % DAY_CYCLE_DURATION) / DAY_CYCLE_DURATION;
+            // Update time of day based on journey progress
+            const elapsedTime = Date.now() - journeyStartTime;
+            const journeyProgress = Math.min(elapsedTime / JOURNEY_DURATION, 1);
+            
+            // Map journey progress to day cycle: evening (0.5) → night (0.75) → dawn (0.9) → day (0.25)
+            if (journeyProgress < 0.3) {
+                // Evening to night (first 90 seconds)
+                timeOfDay = 0.5 + (journeyProgress / 0.3) * 0.25;
+            } else if (journeyProgress < 0.6) {
+                // Night to dawn (next 90 seconds)
+                timeOfDay = 0.75 + ((journeyProgress - 0.3) / 0.3) * 0.15;
+            } else {
+                // Dawn to day (last 121 seconds)
+                timeOfDay = 0.9 + ((journeyProgress - 0.6) / 0.4) * 0.35;
+                if (timeOfDay > 1) timeOfDay -= 1; // Wrap around
+            }
             
             // Progressive difficulty curve (simplified)
             const difficultyProgress = Math.min(distance / 8000, 1); // Max difficulty at 8000m
@@ -1222,15 +1602,15 @@
                 const newBarrier = new Barrier(GAME_WIDTH);
                 pools.barriers.push(newBarrier);
                 
-                // Spawn stars (1 BIT each)
+                // Spawn star fragments
                 if (Math.random() < difficulty.bitsChance) {
                     const starY = newBarrier.gapY + newBarrier.gapSize / 2 + (Math.random() - 0.5) * 100;
-                    pools.bits.push(new StarBit(newBarrier.x + newBarrier.width / 2, starY));
+                    pools.bits.push(new StarFragment(newBarrier.x + newBarrier.width / 2, starY));
                     
-                    // Sometimes spawn star cluster
+                    // Sometimes spawn fragment cluster
                     if (Math.random() < 0.3) {
                         for (let i = 1; i <= 2; i++) {
-                            pools.bits.push(new StarBit(
+                            pools.bits.push(new StarFragment(
                                 newBarrier.x + newBarrier.width / 2 + i * 30,
                                 starY + (Math.random() - 0.5) * 30
                             ));
@@ -1245,12 +1625,37 @@
                 }
             }
             
-            // Spawn rings (spread out more for challenge)
-            if (Math.random() < 0.03 && distance > 500) { // Less frequent, only after 500m
-                const ringY = Math.random() * (GAME_HEIGHT - 100) + 50;
-                // Make sure it's far from last ring
-                if (pools.rings.length === 0 || pools.rings[pools.rings.length - 1].x < GAME_WIDTH - 400) {
-                    pools.rings.push(new Ring(GAME_WIDTH + 100, ringY));
+            // Strategic ring placement
+            if (distance > 500) { // Only after 500m
+                const shouldSpawnRing = Math.random() < 0.04 && 
+                    (pools.rings.length === 0 || pools.rings[pools.rings.length - 1].x < GAME_WIDTH - 600);
+                
+                if (shouldSpawnRing) {
+                    // Find a safe position for the ring
+                    let ringX = GAME_WIDTH + 200;
+                    let ringY;
+                    
+                    // Check upcoming barriers to ensure ring is reachable
+                    const nearbyBarriers = pools.barriers.filter(b => 
+                        b.x > GAME_WIDTH - 200 && b.x < GAME_WIDTH + 400
+                    );
+                    
+                    if (nearbyBarriers.length > 0) {
+                        // Place ring between barriers or in gap
+                        const barrier = nearbyBarriers[0];
+                        ringY = barrier.gapY + barrier.gapSize / 2;
+                        
+                        // Offset ring to be between barriers
+                        ringX = barrier.x + barrier.width + 150;
+                    } else {
+                        // No nearby barriers, place freely
+                        ringY = GAME_HEIGHT * 0.3 + Math.random() * (GAME_HEIGHT * 0.4);
+                    }
+                    
+                    // Ensure ring is within playable area
+                    ringY = Math.max(80, Math.min(GAME_HEIGHT - 80, ringY));
+                    
+                    pools.rings.push(new Ring(ringX, ringY));
                 }
             }
             
@@ -1261,15 +1666,12 @@
                 // Check collision
                 if (barrier.checkCollision(dusa)) {
                     if (activePowerUps.mirror > 0) {
-                        // Mirror makes barriers act as bounce pads
-                        const bounceForce = -Math.abs(dusa.velocity) * 1.5;
-                        dusa.velocity = Math.max(bounceForce, -8); // Strong upward bounce
-                        dusa.x = Math.max(barrier.x - dusa.width - 5, dusa.x - 3); // Push back slightly
-                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#3B82F6', 20, 3);
-                        playSound(880, 0.15, 0.04, 'triangle');
-                        
-                        // Graceful bounce animation
-                        dusa.rotation = -0.5;
+                        // Mirror allows passing through barriers
+                        if (!barrier.passedThrough) {
+                            barrier.passedThrough = true;
+                            createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#3B82F6', 15, 2);
+                            playSound(1108, 0.1, 0.03, 'sine'); // Magical pass-through sound
+                        }
                     } else {
                         gameOver();
                         return false;
@@ -1281,7 +1683,7 @@
                     barrier.passed = true;
                     score++;
                     
-                    // Simple pass sound
+                    // Pass sound in key (A4)
                     playSound(440, 0.1, 0.02);
                     updateUI();
                 }
@@ -1289,18 +1691,31 @@
                 return barrier.x > -barrier.width;
             });
             
-            // Update star BITS
+            // Update star fragments
             pools.bits = pools.bits.filter(bit => {
                 bit.update(difficulty.speed);
                 
                 if (!bit.collected && bit.checkCollection(dusa)) {
                     bit.collected = true;
-                    bits += 1;  // 1 BIT per star
+                    starFragments++;
                     
-                    // Collection sound
-                    playSound(880, 0.1, 0.03, 'sine');
+                    // Check if we've collected 5 fragments to form a star
+                    if (starFragments >= 5) {
+                        starFragments = 0;
+                        bits += 8;  // Complete star gives 8 BITS
+                        
+                        // Star completion effect - harmonious chord in C major
+                        createParticles(dusa.x + dusa.width/2, dusa.y + dusa.height/2, '#FFD700', 20, 3);
+                        playSound(523.25, 0.15, 0.04, 'sine');  // C5
+                        playSound(659.25, 0.15, 0.04, 'sine');  // E5
+                        playSound(783.99, 0.15, 0.04, 'sine');  // G5
+                    } else {
+                        // Fragment collection sounds - ascending notes in C major
+                        const fragmentNotes = [261.63, 329.63, 392.00, 440.00, 523.25]; // C4, E4, G4, A4, C5
+                        playSound(fragmentNotes[starFragments - 1], 0.08, 0.02, 'sine');
+                        createParticles(bit.x, bit.y, '#ffffff', 5, 1);
+                    }
                     
-                    createParticles(bit.x, bit.y, '#ffffff', 8, 1.5);
                     updateUI();
                     return false;
                 }
@@ -1318,9 +1733,10 @@
                     // Apply mirror effect
                     activePowerUps.mirror = 480; // 8 seconds
                     
-                    // Power-up sound
-                    playSound(1318.51, 0.2, 0.05); // E6
-                    playSound(1661.22, 0.2, 0.05); // G#6
+                    // Power-up sound - magical arpeggio in C major
+                    playSound(523.25, 0.2, 0.05);  // C5
+                    playSound(659.25, 0.2, 0.05);  // E5
+                    playSound(783.99, 0.2, 0.05);  // G5
                     
                     createParticles(powerUp.x, powerUp.y, '#E0E0E0', 16, 2.5);
                     return false;
@@ -1354,9 +1770,11 @@
                     bits += bitsReward;
                     createParticles(ring.x, ring.y, '#FFD700', 25, 3);
                     
-                    // Ring collection sound (higher pitch with streak)
-                    playSound(1046.50 + ringStreak * 100, 0.2, 0.05);
-                    playSound(1318.51 + ringStreak * 100, 0.2, 0.05);
+                    // Ring collection sound - harmonious intervals based on streak
+                    const ringBaseNotes = [523.25, 659.25]; // C5, E5
+                    ringBaseNotes.forEach(note => {
+                        playSound(note * (1 + ringStreak * 0.25), 0.2, 0.05); // Raise octave with streak
+                    });
                     updateUI();
                 }
                 
@@ -1392,14 +1810,45 @@
         // Update UI
         function updateUI() {
             document.getElementById('score').textContent = score;
-            document.getElementById('bitsCount').textContent = `BITS: ${bits}`;
-            document.getElementById('distance').textContent = `${Math.floor(distance)}m`;
+            
+            // Show BITS and star fragments
+            let bitsText = `BITS: ${bits}`;
+            if (starFragments > 0) {
+                bitsText += ` | ⭐${starFragments}/5`;
+            }
             
             // Show ring streak
             if (ringStreak > 0) {
                 const streakValue = ringStreak >= 4 ? 64 : ringStreak === 3 ? 32 : ringStreak === 2 ? 16 : 8;
-                document.getElementById('bitsCount').textContent = `BITS: ${bits} | STREAK x${streakValue}`;
+                bitsText += ` | STREAK x${streakValue}`;
             }
+            
+            document.getElementById('bitsCount').textContent = bitsText;
+            
+            // Show distance and journey progress
+            const elapsedTime = Date.now() - journeyStartTime;
+            const journeyProgress = Math.min(elapsedTime / JOURNEY_DURATION, 1);
+            const remainingSeconds = Math.max(0, Math.floor((JOURNEY_DURATION - elapsedTime) / 1000));
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            
+            let distanceText = `${Math.floor(distance)}m`;
+            if (journeyProgress > 0) {
+                distanceText += ` | ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Show time phase
+                if (timeOfDay >= 0.5 && timeOfDay < 0.75) {
+                    distanceText += ' 🌆'; // Evening
+                } else if (timeOfDay >= 0.75 && timeOfDay < 0.9) {
+                    distanceText += ' 🌙'; // Night
+                } else if (timeOfDay >= 0.9 || timeOfDay < 0.1) {
+                    distanceText += ' 🌅'; // Dawn
+                } else {
+                    distanceText += ' ☀️'; // Day
+                }
+            }
+            
+            document.getElementById('distance').textContent = distanceText;
             
             // Show active power-ups
             const indicators = document.getElementById('powerUpIndicators');
@@ -1606,6 +2055,7 @@
             if (document.hidden && gameState === GameState.PLAYING) {
                 gameState = GameState.GAME_OVER;
                 gameOverTime = Date.now();
+                stopBackgroundMusic();
                 document.getElementById('gameOverScreen').classList.remove('hidden');
             }
         });

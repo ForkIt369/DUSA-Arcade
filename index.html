@@ -74,6 +74,41 @@
             cursor: pointer;
         }
         
+        .game-card.featured {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #161B22 0%, #1a1f2e 100%);
+            border: 2px solid #3B82F6;
+        }
+        
+        .featured-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #FFD700;
+            color: #0D1117;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .game-features {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1rem 0 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .feature-tag {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60A5FA;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.875rem;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
         .game-card::before {
             content: '';
             position: absolute;
@@ -131,6 +166,17 @@
             background-color: #3B82F6;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+        }
+        
+        .featured .play-button {
+            background: linear-gradient(135deg, #3B82F6, #60A5FA);
+            font-size: 1.1rem;
+            padding: 1rem 2rem;
+        }
+        
+        .featured .play-button:hover {
+            background: linear-gradient(135deg, #60A5FA, #3B82F6);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
         }
         
         .coming-soon {
@@ -224,7 +270,7 @@
 <body>
     <div class="header">
         <h1>DUSA Arcade</h1>
-        <p class="tagline">Join the Rebellion. Restore Decentralization. Have Fun.</p>
+        <p class="tagline">Three Epic Games. One Blue Hero. Endless Fun.</p>
         
         <div class="lore-section">
             <h2>A New Dawn on Metis</h2>
@@ -240,73 +286,68 @@
         <div class="stats">
             <div class="stat">
                 <span class="stat-value">3</span>
-                <span class="stat-label">Battles Ready</span>
+                <span class="stat-label">Games Ready</span>
             </div>
             <div class="stat">
                 <span class="stat-value">7</span>
-                <span class="stat-label">Power Levels</span>
+                <span class="stat-label">Avatar Levels</span>
             </div>
             <div class="stat">
                 <span class="stat-value">∞</span>
-                <span class="stat-label">Rebellion Spirit</span>
+                <span class="stat-label">Fun Guaranteed</span>
             </div>
         </div>
     </div>
     
     <div class="games-grid">
+        <div class="game-card featured" onclick="window.location.href='games/dusa-angel/index.html'">
+            <div class="featured-badge">NEW!</div>
+            <h2 class="game-title">DUSA Angel</h2>
+            <p class="game-description">
+                Embark on a 5-minute musical journey from evening to dawn. Collect star fragments, dodge snake-like barriers, and survive to see the sunrise. Features Orinoco Flow soundtrack!
+            </p>
+            <div class="game-features">
+                <span class="feature-tag">🎵 Epic Soundtrack</span>
+                <span class="feature-tag">⭐ Fragment Collection</span>
+                <span class="feature-tag">🪞 Mirror Power-up</span>
+            </div>
+            <a href="games/dusa-angel/index.html" class="play-button">Play Now</a>
+        </div>
+        
         <div class="game-card" onclick="window.location.href='games/dusa-snake/index.html'">
             <h2 class="game-title">DUSA Snake</h2>
             <p class="game-description">
-                Guide $DUSA through the digital realm, collecting BITS to grow stronger. Each fragment of decentralization makes her more powerful in the fight against the green menace.
+                Guide $DUSA through the digital realm, collecting BITS to evolve through 7 avatar levels. Master power-ups, avoid obstacles, and grow stronger with each fragment collected.
             </p>
-            <a href="games/dusa-snake/index.html" class="play-button">Enter Battle</a>
+            <div class="game-features">
+                <span class="feature-tag">🎮 Classic Gameplay</span>
+                <span class="feature-tag">👾 7 Avatars</span>
+                <span class="feature-tag">✨ Power-ups</span>
+            </div>
+            <a href="games/dusa-snake/index.html" class="play-button">Play Now</a>
         </div>
         
         <div class="game-card" onclick="window.location.href='games/dusa-pong/index.html'">
             <h2 class="game-title">DUSA Pong</h2>
             <p class="game-description">
-                Face off against FakeDusa in an epic mirror duel. Your blue flame battles her green deception. First to seven wins the round, but the war for Metis continues.
+                Face off against FakeDusa in an epic mirror duel. Blue vs Green in a best-of-3 match with dynamic AI that learns and adapts. Every rally counts!
             </p>
-            <a href="games/dusa-pong/index.html" class="play-button">Enter Battle</a>
-        </div>
-        
-        <div class="game-card" onclick="window.location.href='games/dusa-angel/index.html'">
-            <h2 class="game-title">DUSA Angel</h2>
-            <p class="game-description">
-                Take flight as DUSA Angel, soaring through FakeDusa's corrupted barriers. Liberate the digital realm one flap at a time in this endless battle for freedom.
-            </p>
-            <a href="games/dusa-angel/index.html" class="play-button">Enter Battle</a>
-        </div>
-        
-        <div class="game-card coming-soon">
-            <h2 class="game-title">DUSA Tetris</h2>
-            <p class="game-description">
-                Build the foundations of a new decentralized order. Stack the blocks of freedom while FakeDusa tries to corrupt your construction. Coming soon to the rebellion.
-            </p>
-            <button class="play-button">Coming Soon</button>
-        </div>
-        
-        <div class="game-card coming-soon">
-            <h2 class="game-title">DUSA Breakout</h2>
-            <p class="game-description">
-                Break through the walls of centralized control. Each brick destroyed weakens FakeDusa's grip on Metis. The revolution needs you.
-            </p>
-            <button class="play-button">Coming Soon</button>
-        </div>
-        
-        <div class="game-card coming-soon">
-            <h2 class="game-title">DUSA Space Invaders</h2>
-            <p class="game-description">
-                Defend the Metis blockchain from waves of green invaders. FakeDusa's army approaches from above, but $DUSA stands ready. The final battle awaits.
-            </p>
-            <button class="play-button">Coming Soon</button>
+            <div class="game-features">
+                <span class="feature-tag">🏓 PvE Battle</span>
+                <span class="feature-tag">🤖 Smart AI</span>
+                <span class="feature-tag">🔥 Flame Effects</span>
+            </div>
+            <a href="games/dusa-pong/index.html" class="play-button">Play Now</a>
         </div>
     </div>
     
     <div class="footer">
-        <p>Built with 💙 using modern web technologies</p>
+        <p>🎮 DUSA Arcade - Play Now at <a href="https://dusa-arcade.vercel.app" style="color: #3B82F6;">dusa-arcade.vercel.app</a></p>
         <p style="margin-top: 1rem; font-size: 0.9rem;">
-            DUSA Arcade - Where Classic Games Meet Modern Design
+            Built with 💙 for the $DUSA Community | All Games Playable on Desktop & Mobile
+        </p>
+        <p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
+            © 2024 DUSA Arcade | Open Source Gaming
         </p>
     </div>
     
