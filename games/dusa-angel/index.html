@@ -323,10 +323,31 @@
         
         // Progressive difficulty
         let difficulty = {
-            speed: 2,
-            gapSize: 160,
-            barrierFrequency: 300,
-            bitsChance: 0.6
+            speed: 1.5,
+            gapSize: 240,
+            barrierFrequency: 400,
+            bitsChance: 0.8
+        };
+        
+        // Game states
+        let isZenMode = true;
+        let flowCombo = 0;
+        let perfectPasses = 0;
+        let lastFlapTime = 0;
+        
+        // Power-ups
+        const PowerUpType = {
+            MEDITATION: 'meditation',
+            SHIELD: 'shield',
+            HARMONY: 'harmony',
+            MAGNET: 'magnet'
+        };
+        
+        let activePowerUps = {
+            meditation: 0,
+            shield: false,
+            harmony: 0,
+            magnet: 0
         };
         
         // Physics constants
@@ -354,7 +375,10 @@
             bits: [],
             particles: [],
             clouds: [],
-            stars: []
+            stars: [],
+            powerUps: [],
+            windCurrents: [],
+            tutorials: []
         };
         
         // Images
@@ -900,11 +924,42 @@
             timeOfDay = (Date.now() % DAY_CYCLE_DURATION) / DAY_CYCLE_DURATION;
             
             // Update difficulty based on distance
-            const difficultyProgress = Math.min(distance / 10000, 1); // Max difficulty at 10000m
-            difficulty.speed = 2 + difficultyProgress * 2;
-            difficulty.gapSize = 160 - difficultyProgress * 40; // Min gap of 120
-            difficulty.barrierFrequency = 300 - difficultyProgress * 100; // Min spacing of 200
-            difficulty.bitsChance = 0.6 - difficultyProgress * 0.2; // Min chance of 0.4
+            if (distance > 500 && isZenMode) {
+                isZenMode = false;
+                createParticles(GAME_WIDTH/2, GAME_HEIGHT/2, '#3B82F6', 20, 3);
+                // Achievement sound
+                playSound(523.25, 0.3, 0.05);
+                playSound(659.25, 0.3, 0.05);
+                playSound(783.99, 0.3, 0.05);
+            }
+            
+            // Progressive difficulty curve
+            let difficultyProgress = 0;
+            if (distance < 500) {
+                // Zen mode - no change
+                difficulty.speed = 1.5;
+                difficulty.gapSize = 300;
+                difficulty.barrierFrequency = 600;
+            } else if (distance < 1500) {
+                // Very easy
+                difficultyProgress = (distance - 500) / 1000 * 0.2;
+                difficulty.speed = 1.5 + difficultyProgress * 0.5;
+                difficulty.gapSize = 240 - difficultyProgress * 20;
+                difficulty.barrierFrequency = 400 - difficultyProgress * 50;
+            } else if (distance < 3000) {
+                // Easy
+                difficultyProgress = 0.2 + (distance - 1500) / 1500 * 0.3;
+                difficulty.speed = 1.7 + difficultyProgress * 0.8;
+                difficulty.gapSize = 220 - difficultyProgress * 30;
+                difficulty.barrierFrequency = 350 - difficultyProgress * 50;
+            } else {
+                // Progressive challenge
+                difficultyProgress = 0.5 + Math.min((distance - 3000) / 7000, 0.5);
+                difficulty.speed = 2.2 + difficultyProgress * 1.8;
+                difficulty.gapSize = 180 - difficultyProgress * 60;
+                difficulty.barrierFrequency = 300 - difficultyProgress * 100;
+            }
+            difficulty.bitsChance = 0.8 - difficultyProgress * 0.3;
             
             // Update DUSA physics
             dusa.velocity += GRAVITY;
