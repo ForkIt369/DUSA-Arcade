@@ -545,6 +545,10 @@
             }
         }
         
+        function updateBitsAndScore() {
+            collectBit();
+        }
+        
         function collectBit() {
             gameState.bits++;
             bitsElement.textContent = gameState.bits;
@@ -1196,7 +1200,6 @@
                 
                 // Increase speed based on bits collected
                 gameState.speed = 1 + Math.floor(gameState.bits / 10) * 0.1;
-                speedElement.textContent = gameState.speed.toFixed(1);
                 
                 // Effects
                 createParticles(
@@ -1263,6 +1266,13 @@
             // Avatar reactions to power-ups
             let emotion;
             switch(type) {
+                case 'mirror':
+                    emotion = '🪞';
+                    avatarDisplay.style.boxShadow = '0 0 40px rgba(135, 206, 235, 0.8)';
+                    gameState.mirrorActive = true;
+                    gameState.mirrorEndTime = Date.now() + 8000;
+                    multiplierElement.classList.add('active');
+                    break;
                 case 'golden':
                     emotion = '⭐';
                     avatarDisplay.style.boxShadow = '0 0 40px rgba(255, 215, 0, 0.8)';
@@ -1279,12 +1289,17 @@
             showAvatarEmotion(emotion);
             
             clearTimeout(timers.powerUp);
-            const duration = type === 'golden' ? 5000 : 8000;
+            const duration = type === 'mirror' ? 8000 : (type === 'golden' ? 5000 : 8000);
             
             timers.powerUp = setTimeout(() => {
                 gameState.activePowerUp = null;
                 powerUpIndicator.classList.remove('active');
                 avatarDisplay.style.boxShadow = '0 0 20px rgba(30, 58, 138, 0.5)';
+                if (type === 'mirror') {
+                    gameState.mirrorActive = false;
+                    gameState.mirrorEndTime = 0;
+                    multiplierElement.classList.remove('active');
+                }
             }, duration);
         }
         
@@ -1431,6 +1446,10 @@
                     
                     let color, symbol;
                     switch(powerUp.type) {
+                        case 'mirror':
+                            color = '#87CEEB';
+                            symbol = '🪞';
+                            break;
                         case 'golden':
                             color = '#FFD700';
                             symbol = '★';
