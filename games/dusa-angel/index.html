@@ -234,6 +234,7 @@
                 <div class="bits-count" id="bitsCount">BITS: 0</div>
             </div>
             <div class="distance-marker" id="distance">0m</div>
+            <div class="power-up-indicators" id="powerUpIndicators" style="position: absolute; top: 50px; left: 10px; display: flex; gap: 5px;"></div>
         </div>
         
         <div class="menu-overlay" id="menuScreen">
@@ -800,13 +801,25 @@
             bits = 0;
             distance = 0;
             timeOfDay = 0.2; // Start in morning
+            isZenMode = true;
+            flowCombo = 0;
+            perfectPasses = 0;
+            lastFlapTime = 0;
             
-            // Reset difficulty
+            // Reset difficulty to zen mode
             difficulty = {
-                speed: 2,
-                gapSize: 180,
-                barrierFrequency: 350,
-                bitsChance: 0.6
+                speed: 1.5,
+                gapSize: 240,
+                barrierFrequency: 400,
+                bitsChance: 0.8
+            };
+            
+            // Reset power-ups
+            activePowerUps = {
+                meditation: 0,
+                shield: false,
+                harmony: 0,
+                magnet: 0
             };
             
             // Reset DUSA
@@ -819,6 +832,12 @@
             pools.barriers = [];
             pools.bits = [];
             pools.particles = [];
+            pools.powerUps = [];
+            pools.windCurrents = [];
+            pools.tutorials = [];
+            
+            // Create tutorial hints for zen mode
+            createTutorialHints();
             
             // Hide/show screens
             document.getElementById('menuScreen').classList.add('hidden');
@@ -916,9 +935,9 @@
             // Update distance
             distance += difficulty.speed;
             
-            // Spawn barriers
-            if (pools.barriers.length === 0 || 
-                pools.barriers[pools.barriers.length - 1].x < GAME_WIDTH - difficulty.barrierFrequency) {
+            // Spawn barriers (not in zen mode)
+            if (!isZenMode && (pools.barriers.length === 0 || 
+                pools.barriers[pools.barriers.length - 1].x < GAME_WIDTH - difficulty.barrierFrequency)) {
                 const newBarrier = new Barrier(GAME_WIDTH);
                 pools.barriers.push(newBarrier);
                 
@@ -937,6 +956,21 @@
                         }
                     }
                 }
+                
+                // Spawn power-ups
+                if (distance > 500 && Math.random() < 0.15) {
+                    const types = Object.values(PowerUpType);
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    const powerUpY = newBarrier.gapY + newBarrier.gapSize / 2;
+                    pools.powerUps.push(new PowerUp(newBarrier.x + 150, powerUpY, type));
+                }
+            }
+            
+            // Spawn wind currents
+            if (distance > 1000 && Math.random() < 0.01 && pools.windCurrents.length < 3) {
+                const direction = Math.random() < 0.5 ? 1 : -1;
+                const y = Math.random() * (GAME_HEIGHT - 150);
+                pools.windCurrents.push(new WindCurrent(GAME_WIDTH, y, 0.5 + Math.random() * 0.5, direction));
             }
             
             // Update barriers
@@ -1002,6 +1036,35 @@
             document.getElementById('score').textContent = score;
             document.getElementById('bitsCount').textContent = `BITS: ${bits}`;
             document.getElementById('distance').textContent = `${Math.floor(distance)}m`;
+            
+            // Show combo
+            if (flowCombo > 0) {
+                document.getElementById('bitsCount').textContent = `BITS: ${bits} | FLOW x${flowCombo}`;
+            }
+            
+            // Show active power-ups
+            const indicators = document.getElementById('powerUpIndicators');
+            indicators.innerHTML = '';
+            if (activePowerUps.meditation > 0) {
+                indicators.innerHTML += '<span style="background: #4FC3F7; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🧘</span>';
+            }
+            if (activePowerUps.shield) {
+                indicators.innerHTML += '<span style="background: #FFD700; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🛡️</span>';
+            }
+            if (activePowerUps.harmony > 0) {
+                indicators.innerHTML += '<span style="background: #9C27B0; padding: 4px 8px; border-radius: 10px; font-size: 12px;">✨</span>';
+            }
+            if (activePowerUps.magnet > 0) {
+                indicators.innerHTML += '<span style="background: #FFC107; padding: 4px 8px; border-radius: 10px; font-size: 12px;">🧲</span>';
+            }
+            
+            // Milestone celebrations
+            const milestones = [1000, 2500, 5000, 10000];
+            for (const milestone of milestones) {
+                if (Math.floor(distance) === milestone) {
+                    celebrateMilestone(milestone);
+                }
+            }
         }
         
         // Draw sky gradient
@@ -1151,6 +1214,20 @@
             
             // Draw near clouds
             pools.clouds.filter(c => c.layer === 1).forEach(cloud => cloud.draw());
+            
+            // Draw zen mode message
+            if (isZenMode && gameState === GameState.PLAYING) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = '24px DM Sans';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Zen Mode - Find Your Flow', GAME_WIDTH / 2, GAME_HEIGHT * 0.1);
+                ctx.font = '16px DM Sans';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fillText(`${Math.floor(500 - distance)}m until challenges begin`, GAME_WIDTH / 2, GAME_HEIGHT * 0.15);
+                ctx.restore();
+            }
         }
         
         // Game loop
